@@ -1,0 +1,19 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for common
+
+common_timezone: Europe/Zurich
+
+common_ntp_servers:
+  - 10.1.255.2
+
+common_packages:
+  - curl
+  - vim
+  - git
+  - htop
+  - jq
+  - python3
+  - net-tools
+
+common_motd_role: unassigned

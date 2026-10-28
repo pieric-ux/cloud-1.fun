@@ -1,0 +1,28 @@
+---
+# Personal admin accounts (role users): SSH key only, passwordless sudo.
+users_admins:
+  - name: pieric
+    ssh_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAcryWfcg3iOT01QaDtVWOj96eOJY1kgOLr6GV3lEDlE id@MacBook-Pro-de-Id.local
+  - name: alexis
+    ssh_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGRd6FEz1k6gqNMHGPX1j4jOD3KFDkTnl+6gc6YDy+P8 kino@Spellbook.local
+  - name: benedict
+    ssh_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBjdElJe8QTWK5NdcXzyUxKcnBq7fpuFlG1NjZxspId/ benedict@pfsense
+
+# Only key kept on the ansible account (key/ansible.pub).
+users_automation_keys:
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA/Cw4uZHVC34HkDoiCt/JiE8vdZCXLfGA6qOLsEl3e7 default@infra.fun
+
+# Legacy accounts removed from every host.
+users_removed:
+  - debian
+  - ubuntu
+  - alpine
+
+# Only these groups may log in over SSH (role cis-hardening): the personal
+# admin accounts and the automation account (primary group "ansible").
+cis_hardening_ssh_allow_groups:
+  - admins
+  - ansible

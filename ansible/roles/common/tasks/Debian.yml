@@ -1,0 +1,21 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for Debian family (Debian, Ubuntu)
+
+- name: Update apt cache and upgrade packages
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: safe
+
+- name: Gather service facts
+  ansible.builtin.service_facts:
+
+# Ubuntu Pro nag messages: apt-news in apt upgrade output, esm-cache for ESM ads.
+- name: Mask Ubuntu Pro nag services
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    masked: true
+  loop:
+    - apt-news.service
+    - esm-cache.service
+  when: item in ansible_facts.services

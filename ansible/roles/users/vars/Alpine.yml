@@ -1,0 +1,4 @@
+#SPDX-License-Identifier: MIT-0
+---
+# vars for Alpine (bash is not installed)
+users_shell: /bin/ash

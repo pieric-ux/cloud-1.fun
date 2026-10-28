@@ -1,0 +1,4 @@
+#SPDX-License-Identifier: MIT-0
+---
+# handlers file for cis-hardening
+# "Reload sshd" is provided by ssh-hardening, declared as a dependency in meta/main.yml.

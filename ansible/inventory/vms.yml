@@ -1,0 +1,11 @@
+all:
+  children:
+    vms:
+      children:
+        dmz:
+        dns:
+        rproxy:
+        automation:
+        monitoring:
+        cyber:
+        prod:

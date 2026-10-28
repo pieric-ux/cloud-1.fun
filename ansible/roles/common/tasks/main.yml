@@ -1,0 +1,24 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for common
+
+- name: Load OS-specific variables
+  ansible.builtin.include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_facts['distribution'] }}.yml"
+    - "{{ ansible_facts['os_family'] }}.yml"
+
+- name: Run OS-specific tasks
+  ansible.builtin.include_tasks: "{{ ansible_facts['os_family'] }}.yml"
+
+- name: Install base packages
+  ansible.builtin.import_tasks: packages.yml
+
+- name: Configure timezone
+  ansible.builtin.import_tasks: timezone.yml
+
+- name: Configure NTP
+  ansible.builtin.import_tasks: chrony.yml
+
+- name: Configure motd
+  ansible.builtin.import_tasks: motd.yml

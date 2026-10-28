@@ -1,0 +1,7 @@
+---
+# Collections needed on a fresh controller:
+#   ansible-galaxy collection install -r requirements.yml
+collections:
+  - name: community.general   # redfish_* (00-bootstrap)
+  - name: cisco.ios           # L2/L3 switches (10-network)
+  - name: pfsensible.core     # pfSense (10-network)

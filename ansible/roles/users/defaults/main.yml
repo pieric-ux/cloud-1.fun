@@ -1,0 +1,18 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for users
+
+# Personal admin accounts: one per person, SSH key only, passwordless sudo
+# through users_admin_group. Site values live in inventory/group_vars/all.yml.
+#   - name: pieric
+#     ssh_keys:
+#       - ssh-ed25519 AAAA... comment
+users_admins: []
+users_admin_group: admins
+
+# Automation account: its authorized_keys is reduced to users_automation_keys.
+users_automation_user: ansible
+users_automation_keys: []
+
+# Accounts removed from every host. Explicit list only, never "everything not listed".
+users_removed: []

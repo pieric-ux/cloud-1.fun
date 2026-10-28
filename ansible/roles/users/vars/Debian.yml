@@ -1,0 +1,4 @@
+#SPDX-License-Identifier: MIT-0
+---
+# vars for Debian family (Debian, Ubuntu)
+users_shell: /bin/bash

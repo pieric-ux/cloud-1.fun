@@ -1,0 +1,6 @@
+all:
+  children:
+    lxc:
+      hosts:
+        vault:
+        rproxy-int:

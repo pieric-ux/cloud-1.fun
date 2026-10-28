@@ -1,0 +1,22 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for ntp
+- name: Install chrony
+  ansible.builtin.package:
+    name: chrony
+    state: present
+
+- name: Deploy chrony configuration
+  ansible.builtin.template:
+    src: chrony.conf.j2
+    dest: /etc/chrony/chrony.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart chrony
+
+- name: Enable and start chrony
+  ansible.builtin.service:
+    name: "{{ common_chrony_service }}"
+    enabled: true
+    state: started

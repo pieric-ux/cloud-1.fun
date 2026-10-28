@@ -1,0 +1,46 @@
+all:
+  children:
+    mgmt:
+      children:
+        proxmox:
+          children:
+            pve:
+              hosts:
+                pve01:
+                  ansible_host: pve01.cloud-1.fun
+                pve02:
+                  ansible_host: pve02.cloud-1.fun
+            backup:
+              hosts:
+                pbs:
+                  ansible_host: pbs.cloud-1.fun
+        dns:
+          hosts:
+            dhcp-dns:
+              ansible_host: 10.1.240.31
+        vault_server:
+          hosts:
+            vault:
+              ansible_host: vault-01.cloud-1.fun
+        rproxy:
+          hosts:
+            rproxy-int:
+              ansible_host: rproxy-int01.cloud-1.fun
+            # rproxy-ext:
+            #   ansible_host: rproxy-ext01.cloud-1.fun
+        automation:
+          hosts:
+            ansible:
+              ansible_host: ansible.cloud-1.fun
+        monitoring:
+          hosts:
+            grafana:
+              ansible_host: grafana01.cloud-1.fun
+            prometheus:
+              ansible_host: prometheus01.cloud-1.fun
+        cyber:
+          hosts:
+            c2-hak5:
+              ansible_host: c2hak5.cloud-1.fun
+            sliver-c2:
+              ansible_host: sliver-c2.cloud-1.fun

@@ -1,0 +1,6 @@
+all:
+  children:
+    baremetal:
+      hosts:
+        pve01:
+        pve02:

@@ -1,0 +1,45 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for admin accounts
+# Without admins, removing the legacy accounts would leave nobody able to log in.
+- name: Check that admin accounts are defined
+  ansible.builtin.assert:
+    that: users_admins | length > 0
+    fail_msg: users_admins is empty, set it in inventory/group_vars/all.yml
+
+- name: Create admin group
+  ansible.builtin.group:
+    name: "{{ users_admin_group }}"
+    state: present
+
+# password '*': no usable password, but the account is not "locked" ('!'),
+# which sshd without PAM (Alpine) refuses even for key logins.
+- name: Create admin accounts
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    shell: "{{ users_shell }}"
+    groups: "{{ users_admin_group }}"
+    append: true
+    password: "*"
+    update_password: on_create
+  loop: "{{ users_admins }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Deploy admin SSH keys
+  ansible.posix.authorized_key:
+    user: "{{ item.name }}"
+    key: "{{ item.ssh_keys | join('\n') }}"
+    exclusive: true
+  loop: "{{ users_admins }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Allow passwordless sudo for admins
+  ansible.builtin.template:
+    src: sudoers-admins.j2
+    dest: /etc/sudoers.d/{{ users_admin_group }}
+    owner: root
+    group: root
+    mode: "0440"
+    validate: visudo -cf %s

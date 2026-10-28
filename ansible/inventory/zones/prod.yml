@@ -1,0 +1,16 @@
+all:
+  children:
+    prod:
+      children:
+        k3s:
+          children:
+            k3s_control:
+              hosts:
+                k3s-control:
+                  ansible_host: k3s-control.cloud-1.fun
+            k3s_worker:
+              hosts:
+                k3s-worker-1:
+                  ansible_host: k3s-worker-1.cloud-1.fun
+                k3s-worker-2:
+                  ansible_host: k3s-worker-2.cloud-1.fun

@@ -1,0 +1,11 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for legacy accounts
+# No force: an account with running processes makes the task fail instead of
+# killing someone's session.
+- name: Remove legacy accounts
+  ansible.builtin.user:
+    name: "{{ item }}"
+    state: absent
+    remove: true
+  loop: "{{ users_removed }}"

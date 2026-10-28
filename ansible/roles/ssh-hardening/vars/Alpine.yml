@@ -1,0 +1,4 @@
+#SPDX-License-Identifier: MIT-0
+---
+# vars for Alpine
+ssh_hardening_service: sshd

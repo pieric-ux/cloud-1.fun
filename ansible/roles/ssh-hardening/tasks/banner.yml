@@ -1,0 +1,11 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for the SSH banner
+# sshd reads the banner file at each connection: no reload needed.
+- name: Deploy /etc/issue.net
+  ansible.builtin.template:
+    src: issue.net.j2
+    dest: "{{ ssh_hardening_banner }}"
+    owner: root
+    group: root
+    mode: "0644"

@@ -1,0 +1,8 @@
+#SPDX-License-Identifier: MIT-0
+---
+# handlers file for common
+
+- name: Restart chrony
+  ansible.builtin.service:
+    name: "{{ common_chrony_service }}"
+    state: restarted

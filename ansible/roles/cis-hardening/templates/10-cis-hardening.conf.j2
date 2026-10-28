@@ -1,0 +1,16 @@
+{{ ansible_managed | comment }}
+
+{% if cis_hardening_ssh_allow_groups | length > 0 %}
+AllowGroups {{ cis_hardening_ssh_allow_groups | join(' ') }}
+{% endif %}
+Ciphers {{ cis_hardening_ssh_ciphers | join(',') }}
+KexAlgorithms {{ cis_hardening_ssh_kex_algorithms | join(',') }}
+MACs {{ cis_hardening_ssh_macs | join(',') }}
+HostbasedAuthentication {{ cis_hardening_ssh_hostbased_authentication }}
+IgnoreRhosts {{ cis_hardening_ssh_ignore_rhosts }}
+LoginGraceTime {{ cis_hardening_ssh_login_grace_time }}
+LogLevel {{ cis_hardening_ssh_log_level }}
+MaxSessions {{ cis_hardening_ssh_max_sessions }}
+MaxStartups {{ cis_hardening_ssh_max_startups }}
+PermitEmptyPasswords {{ cis_hardening_ssh_permit_empty_passwords }}
+PermitUserEnvironment {{ cis_hardening_ssh_permit_user_environment }}

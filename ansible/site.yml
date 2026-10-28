@@ -1,0 +1,8 @@
+---
+# Entry point: runs every Ansible layer in order.
+# Each layer can still be run on its own (ansible-playbook 30-config.yml).
+# 00 and 10 are commented out until written: importing an empty playbook fails.
+
+# - import_playbook: 00-bootstrap.yml
+# - import_playbook: 10-network.yml
+- import_playbook: 30-config.yml

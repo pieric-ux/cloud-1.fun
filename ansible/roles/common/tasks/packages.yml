@@ -1,0 +1,7 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for base packages
+- name: Install base packages
+  ansible.builtin.package:
+    name: "{{ common_packages }}"
+    state: present
