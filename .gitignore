@@ -134,3 +134,7 @@ vault-password*
 *.img
 # Ansible run log (may contain sensitive output)
 ansible.log
+# Rendered answers/hooks (contain the root hash) and auto-install ISOs
+00-bootstrap/build/
+# Network snapshots (running configs, pfSense config.xml: hashes, keys)
+/build/

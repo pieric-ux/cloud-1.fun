@@ -1,0 +1,22 @@
+---
+# iLO 4 access (Redfish, layer 00-bootstrap).
+ilo_host: 10.1.240.22
+ilo_user: admin_yuumi
+ilo_password: "{{ vault_ilo_password_pve02 }}"
+
+# Proxmox automated install (answer.toml).
+# Disk: Smart Array logical drive (udev ID_SERIAL of /dev/sda).
+pve_install_disk_serial: 3600508b1001c400589558ba5bef164ee
+# Management NIC: nic0, first member of bond0 (permanent MAC).
+pve_install_mgmt_mac: "f4:03:43:3d:ee:78"
+pve_install_mgmt_cidr: 10.1.240.12/24
+# First-boot network hook: bond members by permanent MAC (nic0-3 / nic4-7).
+pve_net_bond0_macs: ["f4:03:43:3d:ee:78", "f4:03:43:3d:ee:79", "f4:03:43:3d:ee:7a", "f4:03:43:3d:ee:7b"]
+pve_net_bond1_macs: ["d0:bf:9c:b6:82:e0", "d0:bf:9c:b6:82:e8", "d0:bf:9c:b6:52:d0", "d0:bf:9c:b6:52:d8"]
+pve_net_bond1_cidr: 10.1.230.2/30
+pve_net_storage_cidr: 10.1.20.12/24
+# Root password kept in clear in the vault, hashed at render time: the ISO is
+# served over HTTP, it must only carry the hash. Fixed salt (not a secret) so
+# the rendered answer stays identical between runs.
+pve_install_root_password_salt: H0iis7D8ruST8VT2
+pve_install_root_password_hash: "{{ vault_pve_root_password_pve02 | password_hash('sha512', pve_install_root_password_salt) }}"

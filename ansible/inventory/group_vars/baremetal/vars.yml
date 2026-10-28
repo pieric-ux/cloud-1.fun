@@ -1,0 +1,36 @@
+---
+# iLO credentials differ per host: user and password reference live in
+# host_vars/<host>.yml, passwords in vault.yml (vault_ilo_password_<host>).
+
+# iLO ships a self-signed certificate.
+ilo_validate_certs: false
+
+# ISO fetched by the iLO over HTTP (server must support Range requests).
+iso_url: http://10.1.240.111:8080/proxmox-ve_9.2-1.iso
+
+# Proxmox automated install (answer.toml), values shared by every node.
+# Read from the running nodes: UEFI, ext4 on LVM, us keyboard, Europe/Zurich.
+pve_install_version: "9.2"
+pve_install_keyboard: en-us
+pve_install_country: ch
+pve_install_timezone: Europe/Zurich
+pve_install_mailto: info@cloud-1.fun
+pve_install_filesystem: ext4
+pve_install_gateway: 10.1.240.1
+pve_install_dns: 10.1.240.31
+# Root password hash differs per node: see host_vars/<host>.yml.
+# Automation key on root so Ansible can reach the fresh node.
+pve_install_root_ssh_keys: "{{ users_automation_keys }}"
+
+# Network layout applied by the first-boot hook (same on every node).
+pve_net_bridge_vids: [10, 20, 30, 240]
+pve_net_mgmt_vlan: 240
+pve_net_storage_vlan: 20
+pve_net_bond1_mtu: 9000
+
+# Auto-install ISO build: answer + hook rendered here, ISO written here too.
+pve_iso_source: "{{ playbook_dir }}/../00-bootstrap/iso/proxmox-ve_9.2-1.iso"
+pve_iso_build_dir: "{{ playbook_dir }}/../00-bootstrap/build/{{ inventory_hostname }}"
+# Prepared ISO, served only during an install: npx http-server run from
+# 00-bootstrap/build/ (never from iso/, so it cannot be mistaken for the stock ISO).
+pve_install_iso_url: "http://10.1.240.111:8080/{{ inventory_hostname }}/pve-auto-{{ inventory_hostname }}.iso"
