@@ -3,5 +3,6 @@
 #   ansible-galaxy collection install -r requirements.yml
 collections:
   - name: community.general   # redfish_* (00-bootstrap)
+  - name: ansible.netcommon   # network_cli connection (10-network)
   - name: cisco.ios           # L2/L3 switches (10-network)
   - name: pfsensible.core     # pfSense (10-network)

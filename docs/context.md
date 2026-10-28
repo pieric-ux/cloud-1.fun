@@ -31,11 +31,13 @@ total).
 - **Ordre de dev ≠ ordre d'exécution** : le réseau existe déjà et marche → on
   finit la couche 00 d'abord, la couche 10 s'insère *avant* elle dans le
   Makefile ensuite.
-- **IP des iLO sans config manuelle** : la couche 10 crée des **réservations
-  DHCP pfSense** par MAC d'iLO (iLO en DHCP par défaut usine). MAC relevables
-  via Redfish `GetManagerNicInventory`. Le compte iLO pourrait aussi être créé
-  par Redfish (`AddUser`) avec le mot de passe `Administrator` d'usine
-  (étiquette). → point zéro réduit à : IP mgmt des switchs + install DSM.
+- **IP des iLO : statiques, point zéro** (idée de réservations DHCP pfSense
+  abandonnée). Le DHCP du VLAN MGMT est servi par la VM `dhcp-dns` (dnsmasq),
+  absente en rebuild ; et l'IP est stockée dans l'iLO lui-même → elle survit
+  à la réinstallation de l'OS. À faire une fois par machine. MAC iLO :
+  `94:18:82:74:4b:b0` (pve01), `f4:03:43:41:a1:dc` (pve02). Le compte iLO
+  pourrait être créé par Redfish (`AddUser`) avec le mot de passe
+  `Administrator` d'usine (étiquette).
 - **Principe** : automatiser au maximum, documenter le reste avec la raison.
   - `docs/runbook-point-zero.md` (à créer) : étapes manuelles dans l'ordre,
     pour chacune *quoi*, *pourquoi pas automatisable*, *comment vérifier*.
@@ -119,19 +121,25 @@ cloud-1-iac/
 │   │   │   └── mgmt.yml / dmz.yml / prod.yml   # repris d'infra04 (ansible_host ici)
 │   │   ├── baremetal.yml       # axe « quoi » : machines physiques (pve01, pve02)
 │   │   ├── vms.yml / lxc.yml   # axe « quoi » : VMs, conteneurs
-│   │   ├── network.yml         # switchs L2/L3 + pfSense (couche 10), vide
+│   │   ├── network.yml         # network → switches (l3sw, l2sw) + firewall (pfsense), IP ici
 │   │   ├── group_vars/
 │   │   │   ├── all/
 │   │   │   │   └── vars.yml    # ex-all.yml, en clair
 │   │   │   ├── baremetal/
 │   │   │   │   ├── vars.yml    # ilo_validate_certs, iso_url, pve_install_* communs
 │   │   │   │   └── vault.yml   # vault_ilo_password_pveXX, vault_pve_root_password_pveXX
+│   │   │   ├── switches/       # network_cli, paramiko, admin ; vault = mdp par switch
+│   │   │   ├── firewall/       # pfSense admin ; vault = mdp pfSense
+│   │   │   ├── proxmox.yml / vms.yml / lxc.yml   # ansible_ssh_private_key_file
 │   │   │   └── automation.yml, cyber.yml, dns.yml, …   # inchangés
 │   │   └── host_vars/
-│   │       └── pve01.yml / pve02.yml   # iLO + pve_install_* propres à l'hôte
+│   │       ├── pve01.yml / pve02.yml   # iLO + pve_install_* propres à l'hôte
+│   │       └── l2sw.yml / l3sw.yml     # mdp (→ vault), particularités IOS
 │   └── roles/                  # common, users, ssh-hardening, cis-hardening
 ├── 00-bootstrap/               # hors Ansible : iso/ (gitignoré), answer.toml, build ISO
 ├── 20-proxmox/                 # Terraform bpg/proxmox
+├── build/                      # gitignoré : snapshots réseau (build/network/<hôte>/)
+├── key/                        # gitignoré : clé SSH automation (ansible, ansible.pub)
 ├── docs/
 │   └── context.md              # ce fichier
 ├── Makefile                    # make bootstrap / network / vms / config
@@ -186,8 +194,12 @@ Repris dans le `README.md`.
   sous Python 3.13+, le module `crypt` a disparu).
 - Collections : `ansible-galaxy collection install -r ansible/requirements.yml`.
 - Fichier de mot de passe du vault `~/.ansible/.vault_pass_cloud1` (`600`).
-- Clé SSH automation (emplacement **à décider**, hors repo ; en attendant :
-  `--private-key ~/Documents/42-piscine-infra/infra04/key/ansible`).
+- Clé SSH automation dans **`key/`** (gitignoré, `700`/`600`), copiée depuis
+  le repo piscine ; à remettre à la main sur une machine neuve (runbook).
+- **`pipx inject ansible ansible-pylibssh 'paramiko<4'`** : les switchs (IOS
+  12.2 / 15.2) n'offrent que du kex SHA-1 ; la libssh embarquée dans
+  pylibssh est compilée sans, paramiko ≥ 4 l'a retiré → **paramiko 3.5**.
+- Collection `pfsensible.core` (dans `requirements.yml`).
 - Node/npx (`npx http-server` pour servir l'ISO, Range requis).
 - Docker (conteneur Debian pour `proxmox-auto-install-assistant`).
 
@@ -363,6 +375,81 @@ montage → éjecter immédiatement, vérifier l'ordre de boot (`GetBootOrder`)
 avant. Tests de montage avec l'**ISO de base** (installeur interactif,
 n'efface rien), jamais avec l'ISO préparé (s'installe seul et efface).
 
+## Couche 10 — constats et choix
+
+**Équipements** (repo piscine `infra01/vlan_ip_plan.md`, `infra/other_equipment_notes.md`) :
+
+| Hôte | Modèle | IP mgmt | OS |
+|---|---|---|---|
+| l3sw | Catalyst 3560-V2 `WS-C3560V2-48PS`, passerelle de tous les VLAN | `10.1.240.1` (transit `10.1.255.1`) | IOS **12.2(55)SE12** ipservicesk9 |
+| l2sw | Catalyst 2960-X `WS-C2960X-48LPS-L` | `10.1.240.2` | IOS **15.2(7)E9** universalk9 |
+| pfsense | mini PC N100, pfSense CE 2.7.2 | `10.1.255.2` (admin `192.168.99.1`) | FreeBSD |
+| wifi-ap | Aironet 1602I autonome | `10.1.240.3` | hors périmètre pour l'instant |
+
+VLAN : 10 PROD, 20 STOR, 30 DMZ, 240 MGMT, 999 BLACKHOLE (le 1000 VPN de la doc
+n'existe pas sur les switchs → écart doc à corriger). l3sw : `ip routing`, 5
+SVI, route par défaut → pfSense `10.1.255.2`, `ip helper-address 10.1.240.31`.
+
+**Connexion Ansible aux switchs** (`network_cli`, mot de passe du vault, un
+par switch dans `host_vars/l2sw.yml` / `l3sw.yml`) — pièges résolus :
+- Kex SHA-1 uniquement → `ansible_network_cli_ssh_type: paramiko` + paramiko
+  3.5 (l'option `ansible_libssh_key_exchange_algorithms` est ignorée : libssh
+  embarquée compilée sans SHA-1).
+- **`private_key_file` retiré d'`ansible.cfg`** (commenté avec la raison) :
+  `network_cli` reprend *directement* la clé du cfg (play_context, l. 525 de
+  `network_cli.py`) quelles que soient les variables ; paramiko la présente,
+  le Cisco refuse puis coupe (`expected packet type 50, got 5`, bug connu)
+  avant le mot de passe. → clé déclarée par groupe Linux
+  (`group_vars/proxmox.yml`, `vms.yml`, `lxc.yml` : `ansible_ssh_private_key_file`).
+- Clé RSA d'admin retirée du `pubkey-chain` de l2sw (nettoyage pieric). Piste
+  « clés par personne » abandonnée : IOS 12.2/15.2 = `ssh-rsa` seulement, nos
+  clés sont ed25519. On reste au mot de passe.
+- ~8 échecs d'auth sur l2sw le 2026-10-28 soir (tests) : visibles dans son log.
+
+**`10-network.yml` étape 1 (lecture seule, OK sur les 2 switchs)** :
+`ios_facts` + `gather_network_resources` (liste `ios_snapshot_resources` en
+group_vars, surchargée par hôte) + `show running-config` →
+`build/network/<hôte>/` (gitignoré, `0600`). pfSense : copie de
+`/cf/conf/config.xml` → **timeout SSH** (`10.1.255.2:22`) : SSH désactivé,
+règle pare-feu, ou écoute sur le port d'admin seulement → à débloquer.
+
+**IOS 12.2 du l3sw** : pas de filtre `| section` → tous les parseurs live de
+`cisco.ios` échouent → `ios_snapshot_resources: []`, running-config seule,
+puis conversion **hors ligne** (`state: parsed`, cible `127.0.0.1` pour ne
+jamais toucher le switch ; `ios_vlans` et `ios_lacp_interfaces` tentent
+quand même une connexion → VLAN extraits par regex). Pour appliquer :
+`state: rendered` + `ios_config` (mode `ios_apply_mode: rendered` par hôte,
+`resources` par défaut) ; même format YAML pour les 2 switchs, seul
+l'adaptateur change. Limite : `ios_config` n'enlève pas → `no …` explicite.
+- Mise à jour IOS étudiée puis **abandonnée** : 15.0(2)SE11 existe pour le
+  3560-V2 (ipbasek9 suffirait : aucune fonction IP Services utilisée) mais
+  « Service Contract Required » ; pas de source officielle. Flash 28 Mo, 11,2
+  libres (image actuelle = dossier, installée par `.tar`). Si un jour :
+  `.bin`, même plateforme `c3560-` (pas `c3560e-`/`c3560c-` → ROMMON), SHA-512
+  Cisco vérifié sur le Mac + MD5 sur le switch, jamais de reboot avant
+  `verify` + `show boot`, fenêtre annoncée (coupure de tout le rack).
+- **Faille critique Smart Install (CVE-2018-0171)** : touche aussi la 15.0 →
+  se corrige par config (`no vstack`). **Vérifié le 2026-10-28 : désactivé
+  sur les 2 switchs** (l3sw `Oper Mode: Disabled` + `no vstack` déjà en
+  config ; l2sw rien d'actif). `no vstack` à mettre explicitement dans la
+  config gérée des 2 (garantie après rebuild). Durcissement à prévoir : `no ip http server` / `secure-server`,
+  `access-class` sur les vty (SSH depuis MGMT seulement), SNMPv3.
+- Dette technique assumée : 3560-V2 en fin de vie → remplacement par un
+  Catalyst IOS-XE (3650/9300) recommandé à terme.
+
+**VTP → transparent (fait le 2026-10-28, sans coupure)** : l2sw (client) puis
+l3sw (serveur), `write memory`. Les VLAN sont dans la running-config des 2
+switchs, identiques. **Ansible remplace VTP** comme distributeur de VLAN
+(VTP : risque d'écrasement du domaine par un switch à révision plus haute).
+
+**Sauvegarde auto des configs** : plus tard avec **Oxidized** (LXC, versionne
+dans git, diff, gère aussi pfSense). Les sauvegardes contiennent des secrets
+→ dépôt séparé privé ou chiffré, jamais ce repo en clair.
+
+**pfSense** : commencer par la **restauration du `config.xml`** (chiffré par
+le vault) pour savoir reconstruire, puis `pfsensible.core` objet par objet
+(alias, règles, NAT ; OpenVPN en dernier).
+
 ## Où on en est / prochaine étape
 
 - [x] Décisions d'archi tranchées (ci-dessus).
@@ -382,8 +469,8 @@ n'efface rien), jamais avec l'ISO préparé (s'installe seul et efface).
       passe du vault.
 - [x] `00-bootstrap.yml` **lecture seule** (`redfish_info` Systems/Manager +
       `uri` GET brut VirtualMedia/2 et Systems/1) — OK sur pve01 et pve02.
-- [ ] Reste ouvert : `private_key_file=../key/ansible` pointe vers un dossier
-      absent → décider où vit la clé (hors repo).
+- [x] Clé SSH dans `key/` (gitignoré) ; `private_key_file` déplacé du cfg vers
+      les groupes Linux.
 - [x] **Couche 00, étape 2** : ISO servi par `npx http-server` (laptop
       `10.1.240.111`, même sous-réseau mgmt que les iLO → pas de routage),
       Range vérifié (206). `iso_url` dans `group_vars/baremetal/vars.yml`.
@@ -401,7 +488,11 @@ n'efface rien), jamais avec l'ISO préparé (s'installe seul et efface).
       confirmation). **Non exécuté** — test en fin de lab.
 - [ ] Gitea en LXC + push-mirror GitHub.
 - [ ] Synology dans le périmètre (partage ISO + iSCSI) — exploration API.
-- [ ] Couches 10 → 20 → 30, puis Makefile.
+- [x] Couche 10, étape 1 : snapshots lecture seule l2sw + l3sw, YAML des
+      ressources (l2sw gathered, l3sw parsed hors ligne), VTP transparent.
+- [ ] Couche 10, suite : pfSense (SSH), host_vars des switchs + `--check
+      --diff` à zéro, `no vstack`, durcissement, Oxidized (plus tard).
+- [ ] Couches 20 → 30, puis Makefile.
 
 ### Reprise suggérée pour la nouvelle session
 1. Lire ce `context.md`.
@@ -410,8 +501,12 @@ n'efface rien), jamais avec l'ISO préparé (s'installe seul et efface).
    `00-bootstrap/build/` en npx, `--tags install --limit pveXX -e
    pve_install_confirm=true`. Points à observer : hook réseau appliqué,
    cluster/iSCSI à refaire après (couche suivante).
-3. En attendant : couche 10 (pfSense + switchs, dont réservations DHCP des
-   iLO), runbook point zéro, playbook preflight.
+3. Couche 10 : intégrer le parsing hors ligne du l3sw au repo (aujourd'hui
+   dans un playbook temporaire), YAML → `host_vars/l2sw.yml` / `l3sw.yml`
+   (VLAN gérés sur les **deux** switchs depuis le passage en transparent),
+   `--check --diff` = zéro changement ; débloquer SSH pfSense ;
+   `show vstack config` / `no vstack`.
+4. Runbook point zéro, playbook preflight.
 6. Passage en rôle `redfish_bootstrap` (nommé par ce qu'il fait) une fois les
    étapes connues : un fichier de tâches par étape, partie iLO 4 isolée
    (comme `Debian.yml` / `Alpine.yml`), `assert` de confirmation (défaut

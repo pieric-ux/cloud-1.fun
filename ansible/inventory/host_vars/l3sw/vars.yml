@@ -1,0 +1,11 @@
+---
+# Cisco Catalyst 3560-V2, IOS 12.2: gateway of all VLANs, uplink to pfSense.
+ansible_password: "{{ vault_switch_admin_password_l3sw }}"
+
+# IOS 12.2 has no "show running-config | section" filter, used by every live
+# resource parser: only the running config is saved, then turned into YAML
+# offline (resource modules with state: parsed).
+ios_snapshot_resources: []
+# Resource modules read the live config with "| section" before diffing:
+# commands are rendered offline and pushed with ios_config instead (to do).
+ios_apply_mode: rendered

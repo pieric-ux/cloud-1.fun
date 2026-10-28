@@ -1,0 +1,3 @@
+---
+# Cisco Catalyst 2960-X, IOS 15.2: access switch.
+ansible_password: "{{ vault_switch_admin_password_l2sw }}"

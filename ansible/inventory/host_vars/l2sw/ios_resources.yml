@@ -1,0 +1,647 @@
+---
+# Switch configuration as code, cisco.ios resource modules format.
+# Cisco 2960-X (IOS 15.2): read with state gathered.
+# Applied by 10-network.yml --tags apply (check with --check --diff first).
+ios_resources:
+  vlans:
+  - mtu: 1500
+    name: BLACKHOLE
+    shutdown: disabled
+    state: active
+    vlan_id: 999
+  - mtu: 1500
+    name: DMZ
+    shutdown: disabled
+    state: active
+    vlan_id: 30
+  - mtu: 1500
+    name: MGMT
+    shutdown: disabled
+    state: active
+    vlan_id: 240
+  - mtu: 1500
+    name: PROD
+    shutdown: disabled
+    state: active
+    vlan_id: 10
+  - mtu: 1500
+    name: STOR
+    shutdown: disabled
+    state: active
+    vlan_id: 20
+  interfaces:
+  - enabled: false
+    name: FastEthernet0
+  - description: PO1 UPLINK L3
+    enabled: true
+    name: GigabitEthernet1/0/1
+  - description: PO1 UPLINK L3
+    enabled: true
+    name: GigabitEthernet1/0/2
+  - description: PO1 UPLINK L3
+    enabled: true
+    name: GigabitEthernet1/0/3
+  - description: PO1 UPLINK L3
+    enabled: true
+    name: GigabitEthernet1/0/4
+  - description: PO1 UPLINK L3
+    enabled: true
+    name: GigabitEthernet1/0/5
+  - description: PO1 UPLINK L3
+    enabled: true
+    name: GigabitEthernet1/0/6
+  - description: PO1 UPLINK L3
+    enabled: true
+    name: GigabitEthernet1/0/7
+  - description: PO1 UPLINK L3
+    enabled: true
+    name: GigabitEthernet1/0/8
+  - description: PO1 UPLINK L3
+    enabled: true
+    name: GigabitEthernet1/0/9
+  - description: PO1 UPLINK L3
+    enabled: true
+    name: GigabitEthernet1/0/10
+  - description: PO1 UPLINK L3
+    enabled: true
+    name: GigabitEthernet1/0/11
+  - description: PO1 UPLINK L3
+    enabled: true
+    name: GigabitEthernet1/0/12
+  - description: PO2 TRUNK PVE02
+    enabled: true
+    name: GigabitEthernet1/0/13
+  - description: PO3 TRUNK PVE01
+    enabled: true
+    name: GigabitEthernet1/0/14
+  - description: PO2 TRUNK PVE02
+    enabled: true
+    name: GigabitEthernet1/0/15
+  - description: PO3 TRUNK PVE01
+    enabled: true
+    name: GigabitEthernet1/0/16
+  - description: PO2 TRUNK PVE02
+    enabled: true
+    name: GigabitEthernet1/0/17
+  - description: PO3 TRUNK PVE01
+    enabled: true
+    name: GigabitEthernet1/0/18
+  - description: PO2 TRUNK PVE02
+    enabled: true
+    name: GigabitEthernet1/0/19
+  - description: PO3 TRUNK PVE01
+    enabled: true
+    name: GigabitEthernet1/0/20
+  - description: PROD
+    enabled: false
+    name: GigabitEthernet1/0/21
+  - description: PROD
+    enabled: false
+    name: GigabitEthernet1/0/22
+  - description: PROD
+    enabled: false
+    name: GigabitEthernet1/0/23
+  - description: PROD
+    enabled: false
+    name: GigabitEthernet1/0/24
+  - description: STOR - NAS EN1
+    enabled: true
+    name: GigabitEthernet1/0/25
+  - description: STOR - NAS EN2
+    enabled: true
+    name: GigabitEthernet1/0/26
+  - description: STOR
+    enabled: false
+    name: GigabitEthernet1/0/27
+  - description: STOR
+    enabled: false
+    name: GigabitEthernet1/0/28
+  - description: STOR
+    enabled: false
+    name: GigabitEthernet1/0/29
+  - description: STOR
+    enabled: false
+    name: GigabitEthernet1/0/30
+  - description: STOR
+    enabled: false
+    name: GigabitEthernet1/0/31
+  - description: STOR
+    enabled: false
+    name: GigabitEthernet1/0/32
+  - description: STOR
+    enabled: false
+    name: GigabitEthernet1/0/33
+  - description: STOR
+    enabled: false
+    name: GigabitEthernet1/0/34
+  - description: STOR
+    enabled: false
+    name: GigabitEthernet1/0/35
+  - description: STOR
+    enabled: false
+    name: GigabitEthernet1/0/36
+  - description: MGMT - Switch desktop
+    enabled: true
+    name: GigabitEthernet1/0/37
+  - description: MGMT
+    enabled: true
+    name: GigabitEthernet1/0/38
+  - description: MGMT
+    enabled: false
+    name: GigabitEthernet1/0/39
+  - description: MGMT
+    enabled: false
+    name: GigabitEthernet1/0/40
+  - description: MGMT
+    enabled: false
+    name: GigabitEthernet1/0/41
+  - description: MGMT
+    enabled: false
+    name: GigabitEthernet1/0/42
+  - description: MGMT
+    enabled: false
+    name: GigabitEthernet1/0/43
+  - description: MGMT
+    enabled: false
+    name: GigabitEthernet1/0/44
+  - description: MGMT - WIFI-AP TRUNK
+    enabled: true
+    name: GigabitEthernet1/0/45
+  - description: MGMT - QDEVICE03
+    enabled: true
+    name: GigabitEthernet1/0/46
+  - description: MGMT - ILO YUUMI
+    enabled: true
+    name: GigabitEthernet1/0/47
+  - description: MGMT - ILO TEEMO
+    enabled: true
+    name: GigabitEthernet1/0/48
+  - description: BLACKHOLE
+    enabled: false
+    name: GigabitEthernet1/0/49
+  - description: BLACKHOLE
+    enabled: false
+    name: GigabitEthernet1/0/50
+  - description: BLACKHOLE
+    enabled: false
+    name: GigabitEthernet1/0/51
+  - description: BLACKHOLE
+    enabled: false
+    name: GigabitEthernet1/0/52
+  - description: PO1 UPLINK L3
+    enabled: true
+    name: Port-channel1
+  - description: PO2 TRUNK PVE02 YUUMI
+    enabled: true
+    name: Port-channel2
+  - description: PO3 TRUNK PVE01 TEEMO
+    enabled: true
+    name: Port-channel3
+  - enabled: false
+    name: Vlan1
+  - description: MGMT - NET_MGMT - l2sw management
+    enabled: true
+    name: Vlan240
+  l2_interfaces:
+  - mode: trunk
+    name: GigabitEthernet1/0/1
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - mode: trunk
+    name: GigabitEthernet1/0/2
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - mode: trunk
+    name: GigabitEthernet1/0/3
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - mode: trunk
+    name: GigabitEthernet1/0/4
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - mode: trunk
+    name: GigabitEthernet1/0/5
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - mode: trunk
+    name: GigabitEthernet1/0/6
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - mode: trunk
+    name: GigabitEthernet1/0/7
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - mode: trunk
+    name: GigabitEthernet1/0/8
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - mode: trunk
+    name: GigabitEthernet1/0/9
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - mode: trunk
+    name: GigabitEthernet1/0/10
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - mode: trunk
+    name: GigabitEthernet1/0/11
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - mode: trunk
+    name: GigabitEthernet1/0/12
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - mode: trunk
+    name: GigabitEthernet1/0/13
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - mode: trunk
+    name: GigabitEthernet1/0/14
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - mode: trunk
+    name: GigabitEthernet1/0/15
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - mode: trunk
+    name: GigabitEthernet1/0/16
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - mode: trunk
+    name: GigabitEthernet1/0/17
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - mode: trunk
+    name: GigabitEthernet1/0/18
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - mode: trunk
+    name: GigabitEthernet1/0/19
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - mode: trunk
+    name: GigabitEthernet1/0/20
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - access:
+      vlan: 10
+    mode: access
+    name: GigabitEthernet1/0/21
+  - access:
+      vlan: 10
+    mode: access
+    name: GigabitEthernet1/0/22
+  - access:
+      vlan: 10
+    mode: access
+    name: GigabitEthernet1/0/23
+  - access:
+      vlan: 10
+    mode: access
+    name: GigabitEthernet1/0/24
+  - access:
+      vlan: 20
+    mode: access
+    name: GigabitEthernet1/0/25
+    nonegotiate: true
+  - access:
+      vlan: 20
+    mode: access
+    name: GigabitEthernet1/0/26
+    nonegotiate: true
+  - access:
+      vlan: 20
+    mode: access
+    name: GigabitEthernet1/0/27
+  - access:
+      vlan: 20
+    mode: access
+    name: GigabitEthernet1/0/28
+  - access:
+      vlan: 20
+    mode: access
+    name: GigabitEthernet1/0/29
+  - access:
+      vlan: 20
+    mode: access
+    name: GigabitEthernet1/0/30
+  - access:
+      vlan: 20
+    mode: access
+    name: GigabitEthernet1/0/31
+  - access:
+      vlan: 20
+    mode: access
+    name: GigabitEthernet1/0/32
+  - access:
+      vlan: 20
+    mode: access
+    name: GigabitEthernet1/0/33
+  - access:
+      vlan: 20
+    mode: access
+    name: GigabitEthernet1/0/34
+  - access:
+      vlan: 20
+    mode: access
+    name: GigabitEthernet1/0/35
+  - access:
+      vlan: 20
+    mode: access
+    name: GigabitEthernet1/0/36
+  - access:
+      vlan: 240
+    mode: access
+    name: GigabitEthernet1/0/37
+  - access:
+      vlan: 240
+    mode: access
+    name: GigabitEthernet1/0/38
+  - access:
+      vlan: 240
+    mode: access
+    name: GigabitEthernet1/0/39
+  - access:
+      vlan: 240
+    mode: access
+    name: GigabitEthernet1/0/40
+  - access:
+      vlan: 240
+    mode: access
+    name: GigabitEthernet1/0/41
+  - access:
+      vlan: 240
+    mode: access
+    name: GigabitEthernet1/0/42
+  - access:
+      vlan: 240
+    mode: access
+    name: GigabitEthernet1/0/43
+  - access:
+      vlan: 240
+    mode: access
+    name: GigabitEthernet1/0/44
+  - mode: trunk
+    name: GigabitEthernet1/0/45
+    nonegotiate: true
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '240'
+      native_vlan: 999
+  - access:
+      vlan: 240
+    mode: access
+    name: GigabitEthernet1/0/46
+  - access:
+      vlan: 240
+    mode: access
+    name: GigabitEthernet1/0/47
+  - access:
+      vlan: 240
+    mode: access
+    name: GigabitEthernet1/0/48
+  - access:
+      vlan: 999
+    mode: access
+    name: GigabitEthernet1/0/49
+  - access:
+      vlan: 999
+    mode: access
+    name: GigabitEthernet1/0/50
+  - access:
+      vlan: 999
+    mode: access
+    name: GigabitEthernet1/0/51
+  - access:
+      vlan: 999
+    mode: access
+    name: GigabitEthernet1/0/52
+  - mode: trunk
+    name: Port-channel1
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - mode: trunk
+    name: Port-channel2
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  - mode: trunk
+    name: Port-channel3
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      native_vlan: 999
+  l3_interfaces:
+  # IOS defaults made explicit: with replaced, cisco.ios sends 'no ip redirects'
+  # (and unreachables, IPv6) when the option is absent on both sides.
+  - autostate: true
+    name: Vlan1
+    redirects: true
+    unreachables: true
+    ipv6_redirects: true
+    ipv6_unreachables: true
+  - autostate: true
+    ipv4:
+    - address: 10.1.240.2/24
+    name: Vlan240
+    redirects: true
+    unreachables: true
+    ipv6_redirects: true
+    ipv6_unreachables: true
+  lag_interfaces:
+  - members:
+    - member: GigabitEthernet1/0/1
+      mode: active
+    - member: GigabitEthernet1/0/2
+      mode: active
+    - member: GigabitEthernet1/0/3
+      mode: active
+    - member: GigabitEthernet1/0/4
+      mode: active
+    - member: GigabitEthernet1/0/5
+      mode: active
+    - member: GigabitEthernet1/0/6
+      mode: active
+    - member: GigabitEthernet1/0/7
+      mode: active
+    - member: GigabitEthernet1/0/8
+      mode: active
+    - member: GigabitEthernet1/0/9
+      mode: active
+    - member: GigabitEthernet1/0/10
+      mode: active
+    - member: GigabitEthernet1/0/11
+      mode: active
+    - member: GigabitEthernet1/0/12
+      mode: active
+    name: Port-channel1
+  - members:
+    - member: GigabitEthernet1/0/13
+      mode: active
+    - member: GigabitEthernet1/0/15
+      mode: active
+    - member: GigabitEthernet1/0/17
+      mode: active
+    - member: GigabitEthernet1/0/19
+      mode: active
+    name: Port-channel2
+  - members:
+    - member: GigabitEthernet1/0/14
+      mode: active
+    - member: GigabitEthernet1/0/16
+      mode: active
+    - member: GigabitEthernet1/0/18
+      mode: active
+    - member: GigabitEthernet1/0/20
+      mode: active
+    name: Port-channel3
+  acls:
+  - acls:
+    - aces:
+      - grant: permit
+        source:
+          host: 10.1.240.36
+      - grant: deny
+        log:
+          set: true
+        source:
+          any: true
+      acl_type: standard
+      name: ACL-SNMP
+    - aces:
+      - grant: permit
+        source:
+          address: 10.1.240.0
+          wildcard_bits: 0.0.0.255
+      - grant: permit
+        source:
+          address: 10.100.0.0
+          wildcard_bits: 0.0.0.255
+      - grant: deny
+        log:
+          set: true
+        source:
+          any: true
+      acl_type: standard
+      name: ACL-VTY
+    - acl_type: extended
+      name: CISCO-CWA-URL-REDIRECT-ACL
+    - acl_type: extended
+      name: preauth_ipv4_acl (per-user)
+    afi: ipv4
+  - acls:
+    - name: preauth_ipv6_acl (per-user)
+    afi: ipv6

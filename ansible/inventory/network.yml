@@ -1,0 +1,16 @@
+# Network devices (layer 10). Exception to the zones/ rule: these devices
+# carry the zones instead of living in one, so ansible_host is defined here.
+all:
+  children:
+    network:
+      children:
+        switches:
+          hosts:
+            l3sw:
+              ansible_host: 10.1.240.1
+            l2sw:
+              ansible_host: 10.1.240.2
+        firewall:
+          hosts:
+            pfsense:
+              ansible_host: 10.1.255.2

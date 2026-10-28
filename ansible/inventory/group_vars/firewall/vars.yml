@@ -1,0 +1,7 @@
+---
+# pfSense CE 2.7.2 (FreeBSD): pfsensible.core runs over SSH with the Python
+# shipped by pfSense. The admin account is root-equivalent: no sudo.
+ansible_user: admin
+ansible_password: "{{ vault_pfsense_admin_password }}"
+ansible_become: false
+ansible_python_interpreter: /usr/local/bin/python3.11

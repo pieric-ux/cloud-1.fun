@@ -1,0 +1,1157 @@
+---
+# Switch configuration as code, cisco.ios resource modules format.
+# Cisco 3560-V2 (IOS 12.2): parsed offline from the running config (no '| section').
+# Applied by 10-network.yml --tags apply (check with --check --diff first).
+ios_resources:
+  vlans:
+  - name: BLACKHOLE
+    shutdown: disabled
+    state: active
+    vlan_id: 999
+  - name: DMZ
+    shutdown: disabled
+    state: active
+    vlan_id: 30
+  - name: MGMT
+    shutdown: disabled
+    state: active
+    vlan_id: 240
+  - name: PROD
+    shutdown: disabled
+    state: active
+    vlan_id: 10
+  - name: STOR
+    shutdown: disabled
+    state: active
+    vlan_id: 20
+  interfaces:
+  - description: PO1 DOWNLINK L2
+    enabled: true
+    name: FastEthernet0/1
+  - description: PO1 DOWNLINK L2
+    enabled: true
+    name: FastEthernet0/2
+  - description: PO1 DOWNLINK L2
+    enabled: true
+    name: FastEthernet0/3
+  - description: PO1 DOWNLINK L2
+    enabled: true
+    name: FastEthernet0/4
+  - description: PO1 DOWNLINK L2
+    enabled: true
+    name: FastEthernet0/5
+  - description: PO1 DOWNLINK L2
+    enabled: true
+    name: FastEthernet0/6
+  - description: PO1 DOWNLINK L2
+    enabled: true
+    name: FastEthernet0/7
+  - description: PO1 DOWNLINK L2
+    enabled: true
+    name: FastEthernet0/8
+  - description: PO1 DOWNLINK L2
+    enabled: true
+    name: FastEthernet0/9
+  - description: PO1 DOWNLINK L2
+    enabled: true
+    name: FastEthernet0/10
+  - description: PO1 DOWNLINK L2
+    enabled: true
+    name: FastEthernet0/11
+  - description: PO1 DOWNLINK L2
+    enabled: true
+    name: FastEthernet0/12
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/13
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/14
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/15
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/16
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/17
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/18
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/19
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/20
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/21
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/22
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/23
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/24
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/25
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/26
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/27
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/28
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/29
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/30
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/31
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/32
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/33
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/34
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/35
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/36
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/37
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/38
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/39
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/40
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/41
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/42
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/43
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/44
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/45
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/46
+  - description: BLACKHOLE
+    enabled: false
+    name: FastEthernet0/47
+  - description: UPLINK PFSENSE - HOST_PFSENSE
+    enabled: true
+    mode: layer3
+    name: FastEthernet0/48
+  - description: BLACKHOLE
+    enabled: false
+    name: GigabitEthernet0/1
+  - description: BLACKHOLE
+    enabled: false
+    name: GigabitEthernet0/2
+  - description: BLACKHOLE
+    enabled: false
+    name: GigabitEthernet0/3
+  - description: BLACKHOLE
+    enabled: false
+    name: GigabitEthernet0/4
+  - description: PO1 DOWNLINK L2
+    enabled: true
+    name: Port-channel1
+  - enabled: false
+    name: Vlan1
+  - description: PROD - NET_PROD - ACL-PROD-IN
+    enabled: true
+    name: Vlan10
+  - description: STOR - NET_STOR - ACL-STOR-IN
+    enabled: true
+    name: Vlan20
+  - description: DMZ - NET_DMZ - ACL-DMZ-IN
+    enabled: true
+    name: Vlan30
+  - description: MGMT - NET_MGMT - no ACL
+    enabled: true
+    name: Vlan240
+  l2_interfaces:
+  - mode: trunk
+    name: FastEthernet0/1
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      encapsulation: dot1q
+      native_vlan: 999
+  - mode: trunk
+    name: FastEthernet0/2
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      encapsulation: dot1q
+      native_vlan: 999
+  - mode: trunk
+    name: FastEthernet0/3
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      encapsulation: dot1q
+      native_vlan: 999
+  - mode: trunk
+    name: FastEthernet0/4
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      encapsulation: dot1q
+      native_vlan: 999
+  - mode: trunk
+    name: FastEthernet0/5
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      encapsulation: dot1q
+      native_vlan: 999
+  - mode: trunk
+    name: FastEthernet0/6
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      encapsulation: dot1q
+      native_vlan: 999
+  - mode: trunk
+    name: FastEthernet0/7
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      encapsulation: dot1q
+      native_vlan: 999
+  - mode: trunk
+    name: FastEthernet0/8
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      encapsulation: dot1q
+      native_vlan: 999
+  - mode: trunk
+    name: FastEthernet0/9
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      encapsulation: dot1q
+      native_vlan: 999
+  - mode: trunk
+    name: FastEthernet0/10
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      encapsulation: dot1q
+      native_vlan: 999
+  - mode: trunk
+    name: FastEthernet0/11
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      encapsulation: dot1q
+      native_vlan: 999
+  - mode: trunk
+    name: FastEthernet0/12
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      encapsulation: dot1q
+      native_vlan: 999
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/13
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/14
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/15
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/16
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/17
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/18
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/19
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/20
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/21
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/22
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/23
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/24
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/25
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/26
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/27
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/28
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/29
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/30
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/31
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/32
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/33
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/34
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/35
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/36
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/37
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/38
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/39
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/40
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/41
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/42
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/43
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/44
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/45
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/46
+  - access:
+      vlan: 999
+    mode: access
+    name: FastEthernet0/47
+  - access:
+      vlan: 999
+    mode: access
+    name: GigabitEthernet0/1
+  - access:
+      vlan: 999
+    mode: access
+    name: GigabitEthernet0/2
+  - access:
+      vlan: 999
+    mode: access
+    name: GigabitEthernet0/3
+  - access:
+      vlan: 999
+    mode: access
+    name: GigabitEthernet0/4
+  - mode: trunk
+    name: Port-channel1
+    trunk:
+      allowed_vlans:
+      - '10'
+      - '20'
+      - '30'
+      - '240'
+      encapsulation: dot1q
+      native_vlan: 999
+  l3_interfaces:
+  # IOS defaults made explicit: with replaced, cisco.ios sends 'no ip redirects'
+  # (and unreachables, IPv6) when the option is absent on both sides.
+  - ipv4:
+    - address: 10.1.255.1/30
+    name: FastEthernet0/48
+    redirects: true
+    unreachables: true
+    ipv6_redirects: true
+    ipv6_unreachables: true
+  - autostate: true
+    name: Vlan1
+    redirects: true
+    unreachables: true
+    ipv6_redirects: true
+    ipv6_unreachables: true
+  - autostate: true
+    helper_addresses:
+      ipv4:
+      - destination_ip: 10.1.240.31
+    ipv4:
+    - address: 10.1.10.1/24
+    name: Vlan10
+    redirects: true
+    unreachables: true
+    ipv6_redirects: true
+    ipv6_unreachables: true
+  - autostate: true
+    ipv4:
+    - address: 10.1.20.1/24
+    name: Vlan20
+    redirects: true
+    unreachables: true
+    ipv6_redirects: true
+    ipv6_unreachables: true
+  - autostate: true
+    helper_addresses:
+      ipv4:
+      - destination_ip: 10.1.240.31
+    ipv4:
+    - address: 10.1.30.1/24
+    name: Vlan30
+    redirects: true
+    unreachables: true
+    ipv6_redirects: true
+    ipv6_unreachables: true
+  - autostate: true
+    ipv4:
+    - address: 10.1.240.1/24
+    name: Vlan240
+    redirects: true
+    unreachables: true
+    ipv6_redirects: true
+    ipv6_unreachables: true
+  lag_interfaces:
+  - members:
+    - member: FastEthernet0/1
+      mode: active
+    - member: FastEthernet0/2
+      mode: active
+    - member: FastEthernet0/3
+      mode: active
+    - member: FastEthernet0/4
+      mode: active
+    - member: FastEthernet0/5
+      mode: active
+    - member: FastEthernet0/6
+      mode: active
+    - member: FastEthernet0/7
+      mode: active
+    - member: FastEthernet0/8
+      mode: active
+    - member: FastEthernet0/9
+      mode: active
+    - member: FastEthernet0/10
+      mode: active
+    - member: FastEthernet0/11
+      mode: active
+    - member: FastEthernet0/12
+      mode: active
+    name: Port-channel1
+  acls:
+  - acls:
+    - aces:
+      - destination:
+          any: true
+          port_protocol:
+            eq: bootps
+        grant: permit
+        protocol: udp
+        source:
+          any: true
+      - destination:
+          host: 10.1.240.31
+          port_protocol:
+            eq: domain
+        grant: permit
+        protocol: udp
+        source:
+          address: 10.1.30.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          host: 10.1.240.31
+          port_protocol:
+            eq: domain
+        grant: permit
+        protocol: tcp
+        source:
+          address: 10.1.30.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          host: 10.1.255.2
+          port_protocol:
+            eq: ntp
+        grant: permit
+        protocol: udp
+        source:
+          address: 10.1.30.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          host: 10.1.255.2
+        grant: permit
+        protocol: icmp
+        protocol_options:
+          icmp:
+            echo: true
+        source:
+          address: 10.1.30.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          host: 10.1.30.1
+        grant: permit
+        protocol: icmp
+        protocol_options:
+          icmp:
+            echo: true
+        source:
+          address: 10.1.30.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          address: 10.1.240.0
+          wildcard_bits: 0.0.0.255
+        grant: permit
+        protocol: tcp
+        protocol_options:
+          tcp:
+            established: true
+        source:
+          address: 10.1.30.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          address: 10.1.240.0
+          wildcard_bits: 0.0.0.255
+        grant: permit
+        protocol: icmp
+        protocol_options:
+          icmp:
+            echo_reply: true
+        source:
+          address: 10.1.30.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          address: 10.1.0.0
+          wildcard_bits: 0.0.255.255
+        grant: deny
+        protocol: ip
+        source:
+          any: true
+      - destination:
+          address: 10.100.0.0
+          wildcard_bits: 0.0.0.255
+        grant: deny
+        protocol: ip
+        source:
+          any: true
+      - destination:
+          any: true
+        grant: permit
+        protocol: ip
+        source:
+          address: 10.1.30.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          any: true
+        grant: deny
+        log:
+          set: true
+        protocol: ip
+        source:
+          any: true
+      acl_type: extended
+      name: ACL-DMZ-IN
+    - aces:
+      - destination:
+          host: 10.1.255.1
+        grant: permit
+        protocol: icmp
+        source:
+          host: 10.1.255.2
+      - destination:
+          address: 10.1.240.0
+          wildcard_bits: 0.0.0.255
+        grant: permit
+        protocol: ip
+        source:
+          address: 10.100.0.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          address: 10.1.10.0
+          wildcard_bits: 0.0.0.255
+        grant: permit
+        protocol: ip
+        source:
+          address: 10.100.0.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          host: 10.1.20.21
+          port_protocol:
+            eq: '5001'
+        grant: permit
+        protocol: tcp
+        source:
+          address: 10.100.0.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          host: 10.1.20.22
+          port_protocol:
+            eq: '5001'
+        grant: permit
+        protocol: tcp
+        source:
+          address: 10.100.0.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          address: 10.1.0.0
+          wildcard_bits: 0.0.255.255
+        grant: permit
+        protocol: tcp
+        protocol_options:
+          tcp:
+            established: true
+        source:
+          any: true
+      - destination:
+          address: 10.1.0.0
+          wildcard_bits: 0.0.255.255
+        grant: permit
+        protocol: udp
+        source:
+          host: 10.1.255.2
+          port_protocol:
+            eq: ntp
+      - destination:
+          host: 10.1.240.31
+        grant: permit
+        protocol: udp
+        source:
+          any: true
+          port_protocol:
+            eq: domain
+      - destination:
+          address: 10.1.0.0
+          wildcard_bits: 0.0.255.255
+        grant: permit
+        protocol: icmp
+        protocol_options:
+          icmp:
+            echo_reply: true
+        source:
+          any: true
+      - destination:
+          address: 10.1.0.0
+          wildcard_bits: 0.0.255.255
+        grant: permit
+        protocol: icmp
+        protocol_options:
+          icmp:
+            unreachable: true
+        source:
+          any: true
+      - destination:
+          address: 10.1.0.0
+          wildcard_bits: 0.0.255.255
+        grant: permit
+        protocol: icmp
+        protocol_options:
+          icmp:
+            time_exceeded: true
+        source:
+          any: true
+      - destination:
+          any: true
+        grant: deny
+        protocol: ip
+        source:
+          any: true
+      acl_type: extended
+      name: ACL-PFSENSE-IN
+    - aces:
+      - destination:
+          any: true
+          port_protocol:
+            eq: bootps
+        grant: permit
+        protocol: udp
+        source:
+          any: true
+      - destination:
+          host: 10.1.240.31
+          port_protocol:
+            eq: domain
+        grant: permit
+        protocol: udp
+        source:
+          address: 10.1.10.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          host: 10.1.240.31
+          port_protocol:
+            eq: domain
+        grant: permit
+        protocol: tcp
+        source:
+          address: 10.1.10.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          host: 10.1.255.2
+          port_protocol:
+            eq: ntp
+        grant: permit
+        protocol: udp
+        source:
+          address: 10.1.10.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          host: 10.1.255.2
+        grant: permit
+        protocol: icmp
+        protocol_options:
+          icmp:
+            echo: true
+        source:
+          address: 10.1.10.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          host: 10.1.10.1
+        grant: permit
+        protocol: icmp
+        protocol_options:
+          icmp:
+            echo: true
+        source:
+          address: 10.1.10.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          address: 10.1.240.0
+          wildcard_bits: 0.0.0.255
+        grant: permit
+        protocol: tcp
+        protocol_options:
+          tcp:
+            established: true
+        source:
+          address: 10.1.10.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          address: 10.1.240.0
+          wildcard_bits: 0.0.0.255
+        grant: permit
+        protocol: icmp
+        protocol_options:
+          icmp:
+            echo_reply: true
+        source:
+          address: 10.1.10.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          address: 10.100.0.0
+          wildcard_bits: 0.0.0.255
+        grant: permit
+        protocol: tcp
+        protocol_options:
+          tcp:
+            established: true
+        source:
+          address: 10.1.10.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          address: 10.100.0.0
+          wildcard_bits: 0.0.0.255
+        grant: permit
+        protocol: icmp
+        protocol_options:
+          icmp:
+            echo_reply: true
+        source:
+          address: 10.1.10.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          address: 10.1.0.0
+          wildcard_bits: 0.0.255.255
+        grant: deny
+        protocol: ip
+        source:
+          any: true
+      - destination:
+          address: 10.100.0.0
+          wildcard_bits: 0.0.0.255
+        grant: deny
+        protocol: ip
+        source:
+          any: true
+      - destination:
+          any: true
+        grant: permit
+        protocol: ip
+        source:
+          address: 10.1.10.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          any: true
+        grant: deny
+        log:
+          set: true
+        protocol: ip
+        source:
+          any: true
+      acl_type: extended
+      name: ACL-PROD-IN
+    - aces:
+      - grant: permit
+        source:
+          host: 10.1.240.36
+      - grant: deny
+        log:
+          set: true
+        source:
+          any: true
+      acl_type: standard
+      name: ACL-SNMP
+    - aces:
+      - destination:
+          host: 10.1.240.31
+          port_protocol:
+            eq: domain
+        grant: permit
+        protocol: udp
+        source:
+          host: 10.1.20.21
+      - destination:
+          host: 10.1.240.31
+          port_protocol:
+            eq: domain
+        grant: permit
+        protocol: udp
+        source:
+          host: 10.1.20.22
+      - destination:
+          host: 10.1.240.31
+          port_protocol:
+            eq: domain
+        grant: permit
+        protocol: tcp
+        source:
+          host: 10.1.20.21
+      - destination:
+          host: 10.1.240.31
+          port_protocol:
+            eq: domain
+        grant: permit
+        protocol: tcp
+        source:
+          host: 10.1.20.22
+      - destination:
+          host: 10.1.255.2
+          port_protocol:
+            eq: ntp
+        grant: permit
+        protocol: udp
+        source:
+          address: 10.1.20.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          host: 10.1.255.2
+        grant: permit
+        protocol: icmp
+        protocol_options:
+          icmp:
+            echo: true
+        source:
+          address: 10.1.20.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          host: 10.1.20.1
+        grant: permit
+        protocol: icmp
+        protocol_options:
+          icmp:
+            echo: true
+        source:
+          address: 10.1.20.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          address: 10.1.240.0
+          wildcard_bits: 0.0.0.255
+        grant: permit
+        protocol: tcp
+        protocol_options:
+          tcp:
+            established: true
+        source:
+          address: 10.1.20.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          address: 10.1.240.0
+          wildcard_bits: 0.0.0.255
+        grant: permit
+        protocol: icmp
+        protocol_options:
+          icmp:
+            echo_reply: true
+        source:
+          address: 10.1.20.0
+          wildcard_bits: 0.0.0.255
+      - destination:
+          address: 10.100.0.0
+          wildcard_bits: 0.0.0.255
+        grant: permit
+        protocol: tcp
+        protocol_options:
+          tcp:
+            established: true
+        source:
+          host: 10.1.20.21
+          port_protocol:
+            eq: '5001'
+      - destination:
+          address: 10.100.0.0
+          wildcard_bits: 0.0.0.255
+        grant: permit
+        protocol: tcp
+        protocol_options:
+          tcp:
+            established: true
+        source:
+          host: 10.1.20.22
+          port_protocol:
+            eq: '5001'
+      - destination:
+          host: 10.1.240.36
+        grant: permit
+        protocol: udp
+        source:
+          host: 10.1.20.21
+          port_protocol:
+            eq: snmp
+      - destination:
+          host: 10.1.240.36
+          port_protocol:
+            eq: snmptrap
+        grant: permit
+        protocol: udp
+        source:
+          host: 10.1.20.21
+      - destination:
+          address: 10.1.0.0
+          wildcard_bits: 0.0.255.255
+        grant: deny
+        protocol: ip
+        source:
+          any: true
+      - destination:
+          address: 10.100.0.0
+          wildcard_bits: 0.0.0.255
+        grant: deny
+        protocol: ip
+        source:
+          any: true
+      - destination:
+          any: true
+          port_protocol:
+            eq: www
+        grant: permit
+        protocol: tcp
+        source:
+          host: 10.1.20.21
+      - destination:
+          any: true
+          port_protocol:
+            eq: www
+        grant: permit
+        protocol: tcp
+        source:
+          host: 10.1.20.22
+      - destination:
+          any: true
+          port_protocol:
+            eq: '443'
+        grant: permit
+        protocol: tcp
+        source:
+          host: 10.1.20.21
+      - destination:
+          any: true
+          port_protocol:
+            eq: '443'
+        grant: permit
+        protocol: tcp
+        source:
+          host: 10.1.20.22
+      - destination:
+          any: true
+        grant: deny
+        log:
+          set: true
+        protocol: ip
+        source:
+          any: true
+      acl_type: extended
+      name: ACL-STOR-IN
+    - aces:
+      - grant: permit
+        source:
+          address: 10.1.240.0
+          wildcard_bits: 0.0.0.255
+      - grant: permit
+        source:
+          address: 10.100.0.0
+          wildcard_bits: 0.0.0.255
+      - grant: deny
+        log:
+          set: true
+        source:
+          any: true
+      acl_type: standard
+      name: ACL-VTY
+    afi: ipv4
+  acl_interfaces:
+  - access_groups:
+    - acls:
+      - direction: in
+        name: ACL-PFSENSE-IN
+      afi: ipv4
+    name: FastEthernet0/48
+  - access_groups:
+    - acls:
+      - direction: in
+        name: ACL-PROD-IN
+      afi: ipv4
+    name: Vlan10
+  - access_groups:
+    - acls:
+      - direction: in
+        name: ACL-STOR-IN
+      afi: ipv4
+    name: Vlan20
+  - access_groups:
+    - acls:
+      - direction: in
+        name: ACL-DMZ-IN
+      afi: ipv4
+    name: Vlan30
+  static_routes:
+  - address_families:
+    - afi: ipv4
+      routes:
+      - dest: 0.0.0.0/0
+        next_hops:
+        - forward_router_address: 10.1.255.2
