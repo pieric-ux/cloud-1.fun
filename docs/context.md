@@ -663,12 +663,30 @@ le vault) pour savoir reconstruire, puis `pfsensible.core` objet par objet
       --diff` à zéro, `no vstack`, durcissement, Oxidized (plus tard).
 - [ ] Couches 20 → 30, puis Makefile.
 
+### Couche 20 — Terraform (squelette, 2026-10-29)
+`20-proxmox/` : provider `bpg/proxmox` **~> 0.119** (validé : 0.119.0,
+`.terraform.lock.hcl` versionné), Terraform >= 1.5, état local gitignoré,
+`terraform.tfvars` gitignoré (`.example` versionné), **lecture seule** :
+`data "proxmox_virtual_environment_vms"` + output. Pas de ressource écrite à
+la main : les VMs existent, le 1er plan voudrait les remplacer. Étape 2 :
+blocs `import` (`imports.tf.example`, VMIDs du module 01) + `terraform plan
+-generate-config-out` → code généré depuis les VMs réelles (0 écart, comme
+`gathered`). Terraform non installé localement → image
+`hashicorp/terraform:1.9.8` (`make vms-init` / `make vms-plan`). Token API
+`terraform@pve!iac` à créer (Datacenter > Permissions > API Tokens).
+
 ### ⚠️ Avant le test de réinstallation (lu le 2026-10-29)
 - **La VM `pbs` (2400) et son datastore sont sur le `local-lvm` de pve02**
-  (disques `vm-2400-disk-0/1`), donc sur le RAID que l'install **efface** :
-  réinstaller pve02 détruit PBS et les backups locaux (seule la copie
-  distante survit). Tester la réinstallation sur **pve01** après avoir
-  vérifié ce qu'il héberge en `local-lvm`, ou déplacer le pbs avant.
+  (disques `vm-2400-disk-0/1`), donc sur le RAID que l'install efface.
+  **Décision pieric (2026-10-29) : acceptable**, les backups ont une copie
+  distante. Conséquence : après une réinstallation de pve02, la VM `pbs`
+  doit être recréée (couche 20) ou restaurée depuis la copie distante ;
+  d'ici là, le job de backup vers `pbs-store1` échoue. Si possible le
+  garder (« tant mieux ») : **garde-fou ajouté à `install.yml`** qui liste
+  (SSH, lecture seule) les volumes de guests sur le `local-lvm` du nœud et
+  s'arrête s'il y en a, sauf `-e pve_install_allow_local_guests=true` ;
+  avant l'install : `qm migrate 2400 pve01 --with-local-disks` (non testé
+  en réel : commande root bloquée en remote).
 - Après une réinstallation, le nœud doit **retrouver son IQN iSCSI** (le
   masking du NAS refuse tout autre initiateur) et **rejoindre le cluster**
   (`INFRA-CLUSTER`, qdevice `qdevice03` `10.1.240.13`) : rôle `pve_config`

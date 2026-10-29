@@ -14,7 +14,9 @@ the BMC has no shell nor Python, the modules are HTTPS clients.
 | `install.yml` | mounts the prepared ISO, arms boot once, resets, waits for 8006 | **wipes the system disk** |
 
 `install.yml` refuses to run unless `pve_install_confirm=true`; the playbook adds
-`serial: 1` and `any_errors_fatal`.
+`serial: 1` and `any_errors_fatal`. It also lists, over SSH and read-only, the
+guest volumes on the node's `local-lvm` (wiped with it) and stops if there are
+any, unless `pve_install_allow_local_guests=true` (not tested live yet).
 
 ## Vendor-specific calls
 

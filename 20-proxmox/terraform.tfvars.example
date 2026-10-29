@@ -1,0 +1,5 @@
+# Copy to terraform.tfvars (gitignored) and fill in.
+# Token to create on Proxmox (Datacenter > Permissions > API Tokens), e.g.
+# user terraform@pve, token "iac", role restricted to what the layer needs.
+proxmox_endpoint  = "https://10.1.240.11:8006/"
+proxmox_api_token = "terraform@pve!iac=00000000-0000-0000-0000-000000000000"

@@ -10,6 +10,10 @@ redfish_cd_path: /redfish/v1/Managers/1/VirtualMedia/2/
 
 # Install is destructive: refused unless set to true on the command line.
 pve_install_confirm: false
+# Guests on the node's local storage are wiped with it: the install stops if
+# there are any, unless their loss is accepted (true on the command line).
+pve_install_local_storage: local-lvm
+pve_install_allow_local_guests: false
 # The old system must go down, then the fresh one come back on 8006.
 pve_install_down_timeout: 600
 pve_install_up_delay: 120

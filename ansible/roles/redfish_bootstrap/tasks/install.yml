@@ -15,6 +15,33 @@
     password: null
     force_basic_auth: false
 
+# Guests stored on the node's local-lvm live on the disk the install wipes
+# (e.g. the pbs VM on pve02): list them over SSH (read-only) and stop, unless
+# their loss is accepted. Save them first: "qm migrate <vmid> <other node>
+# --with-local-disks", or move their disks to synology-lvm.
+- name: List the guest volumes on the local storage of the node
+  ansible.builtin.command:
+    cmd: "pvesm list {{ pve_install_local_storage }}"
+  vars:
+    ansible_connection: ssh
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_become: true
+  register: pve_local_volumes
+  changed_when: false
+
+- name: Stop if guests would be wiped with the node
+  ansible.builtin.assert:
+    that: >-
+      pve_install_allow_local_guests | bool or
+      (pve_local_volumes.stdout_lines[1:] | length == 0)
+    fail_msg: >-
+      {{ inventory_hostname }} holds guest volumes on {{ pve_install_local_storage }},
+      wiped by the install: {{ pve_local_volumes.stdout_lines[1:] | map('split') | map('first') | list }}.
+      Migrate them first (qm migrate <vmid> <other node> --with-local-disks, or move
+      their disks to synology-lvm), or accept their loss with
+      -e pve_install_allow_local_guests=true.
+    quiet: true
+
 # Before touching the iLO: the disk the answer targets must be the expected,
 # healthy RAID volume (the installer would stop halfway otherwise).
 - name: Check the RAID the install relies on

@@ -43,7 +43,7 @@ cloud-1-iac/
 │       ├── preflight/          # vérifications du point zéro (lecture seule)
 │       └── common, users, ssh-hardening, cis-hardening   # couche 30
 ├── 10-bootstrap/         # hors Ansible : Dockerfile, ISO de base (gitignoré), build/ (gitignoré)
-├── 20-proxmox/           # Terraform
+├── 20-proxmox/           # Terraform bpg/proxmox (squelette lecture seule, make vms-plan)
 ├── build/                # gitignoré : snapshots réseau
 ├── key/                  # gitignoré : clé SSH automation
 ├── docs/
@@ -105,6 +105,7 @@ make bootstrap                         # iLO + RAID (lecture seule)
 make iso                               # ISO auto-install par hôte
 make serve-iso                         # sert les ISO préparés pendant une install
 make install HOST=pve02 CONFIRM=yes    # RÉINSTALLE un nœud (efface le disque)
+make vms-plan                          # couche 20 : liste les VMs (Terraform en conteneur)
 make config CONFIRM=yes                # couche 30
 ```
 

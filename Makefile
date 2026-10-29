@@ -7,6 +7,9 @@
 ANSIBLE_DIR := ansible
 PLAYBOOK    := cd $(ANSIBLE_DIR) && ansible-playbook
 ISO_PORT    ?= 8080
+# Terraform from the official image (no local install), same version as the
+# one the code was validated with.
+TERRAFORM   := docker run --rm -it -v $(CURDIR)/20-proxmox:/w -w /w hashicorp/terraform:1.9.8
 
 # Refuse a target that changes something unless CONFIRM=yes is given.
 define need_confirm
@@ -23,7 +26,8 @@ endef
 .DEFAULT_GOAL := help
 .PHONY: help preflight \
 	network network-check network-apply pfsense-backup \
-	bootstrap iso media-test serve-iso install \
+	bootstrap iso media-test serve-iso install pve-config-check \
+	vms-init vms-plan \
 	config
 
 help: ## List the targets
@@ -70,6 +74,17 @@ install: ## DESTRUCTIVE: reinstall Proxmox on one node (HOST=, CONFIRM=yes)
 	$(call need_host)
 	$(call need_confirm,$(HOST): its system disk is wiped)
 	$(PLAYBOOK) 10-bootstrap.yml --tags install --limit $(HOST) -e pve_install_confirm=true
+
+pve-config-check: ## Preview the Proxmox node configuration (DRAFT, no change)
+	$(PLAYBOOK) 10-bootstrap.yml --tags pve-config --check --diff
+
+# --- 20 proxmox: guests with Terraform (read-only for now) ------------------
+
+vms-init: ## Download the Terraform provider (local)
+	$(TERRAFORM) init
+
+vms-plan: ## List the cluster VMs, change nothing (needs 20-proxmox/terraform.tfvars)
+	$(TERRAFORM) plan
 
 # --- 30 config: OS configuration of the VMs ---------------------------------
 

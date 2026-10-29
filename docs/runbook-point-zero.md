@@ -217,10 +217,16 @@ Une fois le point zéro fait, dans l'ordre (depuis `ansible/`) :
 1. **Réseau** : `ansible-playbook 00-network.yml --tags apply,pfsense-apply --check --diff`,
    puis sans `--check` avec `-e network_apply_confirm=true -e pfsense_apply_confirm=true`.
 2. **Stockage** (`05-storage`, à venir) : partage des ISO, iSCSI.
-3. **Bare metal**, un nœud à la fois, nœud vidé, groupe prévenu :
+3. **Bare metal**, un nœud à la fois, groupe prévenu. **Vider le nœud
+   d'abord** : les guests dont les disques sont sur son `local-lvm` sont
+   effacés avec lui (ex. la VM `pbs` sur pve02) →
+   `qm migrate <vmid> <autre nœud> --with-local-disks`, ou déplacer leurs
+   disques sur `synology-lvm`. L'installation s'arrête s'il en reste
+   (`-e pve_install_allow_local_guests=true` pour accepter leur perte).
    `ansible-playbook 10-bootstrap.yml --tags install --limit pve02 -e pve_install_confirm=true`.
 4. **Configuration des Proxmox** (cluster, iSCSI `synology-lvm`) : à venir.
-5. **VMs** (`20-proxmox`, Terraform) puis **config** (`30-config.yml`) : à venir.
+5. **VMs** (`20-proxmox`, Terraform : squelette en lecture seule, import du
+   code depuis les VMs réelles à venir) puis **config** (`30-config.yml`).
 6. **Restauration des backups** (PBS : pve02 + copie remote).
 
 **Avant l'enchaînement**, vérifier automatiquement les étapes 1 à 7 (lecture
