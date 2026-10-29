@@ -2,13 +2,9 @@
 # Runbook step 3: pfSense restored (SSH with the automation key, Python).
 - name: Check pfSense access
   block:
-    - name: SSH port open
-      ansible.builtin.wait_for:
-        host: "{{ ansible_host }}"
-        port: 22
-        timeout: "{{ preflight_timeout }}"
-      delegate_to: localhost
-
+    # No raw probe of port 22 here: a connection closed without an SSH
+    # handshake counts as an attack for sshguard (pfSense login protection),
+    # which then blocks the controller. The Ansible login checks access.
     - name: Ansible login with the automation key
       ansible.builtin.ping:
       ignore_unreachable: true
