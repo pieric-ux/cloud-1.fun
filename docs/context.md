@@ -515,6 +515,14 @@ le vault) pour savoir reconstruire, puis `pfsensible.core` objet par objet
   changement, puis `--check` = 0, proposition snapshot = host_vars.
   pfSense a réécrit `config.xml` sans saut de ligne final → la comparaison
   du backup normalise (`awk 1`), sinon rechiffrement à chaque lancement.
+- **NAT + routage as code (2026-10-29)** : 2 redirections C2 Hak5
+  (`associated_rule: associated` : la règle suit la redirection) via
+  l'aggregate → 0 écart du 1er coup. Passerelles `WANGW` / `l3sw`, passerelle
+  par défaut `WANGW`, route `10.1.0.0/16 → l3sw` (modules `pfsense_gateway`,
+  `pfsense_default_gateway`, `pfsense_route` en boucle). Seul écart : `WANGW`
+  (créée par l'assistant) sans `<ipprotocol>` → appliqué en réel (micro-
+  recharge du routage, sans coupure constatée), puis `--check` = 0. NAT
+  sortant en `automatic` : rien à modéliser.
 
 ## Où on en est / prochaine étape
 

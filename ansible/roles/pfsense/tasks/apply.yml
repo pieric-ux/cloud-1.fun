@@ -1,5 +1,6 @@
 ---
-# Push host_vars/<firewall>/pfsense_resources.yml (aliases, filter rules) with
+# Push host_vars/<firewall>/pfsense_resources.yml (aliases, NAT port forwards,
+# filter rules) with
 # pfsense_aggregate, rules in list order (first match wins on pfSense).
 # Nothing is purged: objects not described (NAT-associated rules...) stay.
 # Always preview first with --check --diff: no change while the code matches.
@@ -10,10 +11,30 @@
       Real change on {{ inventory_hostname }}: preview with --check --diff,
       then re-run with -e pfsense_apply_confirm=true.
 
-- name: Aliases and filter rules
+- name: Aliases, NAT port forwards and filter rules
   pfsensible.core.pfsense_aggregate:
     aggregated_aliases: "{{ pfsense_resources.aliases }}"
+    aggregated_nat_port_forwards: "{{ pfsense_resources.nat_port_forwards }}"
     aggregated_rules: "{{ pfsense_resources.rules }}"
     order_rules: true
     purge_aliases: false
+    purge_nat_port_forwards: false
     purge_rules: false
+
+- name: Gateways
+  pfsensible.core.pfsense_gateway: "{{ item }}"
+  loop: "{{ pfsense_resources.gateways }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Default IPv4 gateway
+  pfsensible.core.pfsense_default_gateway:
+    gateway: "{{ pfsense_resources.default_gateway }}"
+    ipprotocol: inet
+  when: pfsense_resources.default_gateway | length > 0
+
+- name: Static routes
+  pfsensible.core.pfsense_route: "{{ item }}"
+  loop: "{{ pfsense_resources.routes }}"
+  loop_control:
+    label: "{{ item.network }} via {{ item.gateway }}"

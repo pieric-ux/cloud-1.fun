@@ -1,7 +1,7 @@
 ---
 # pfSense configuration as code, pfsensible.core pfsense_aggregate format.
 # Generated from config.xml (roles/pfsense/filter_plugins); rules in evaluation order.
-# NAT-associated rules are left out (modelled with the NAT).
+# NAT-associated rules are not in rules: they follow their port forward.
 # Applied by 10-network.yml --tags pfsense-apply (check with --check --diff first).
 pfsense_resources:
   aliases:
@@ -164,3 +164,38 @@ pfsense_resources:
     source: 192.168.99.0/24
     destination: (self)
     destination_port: MGMT_PORTS
+  nat_port_forwards:
+  - descr: C2 Hak5 Squirrel
+    interface: wan
+    ipprotocol: inet
+    protocol: tcp
+    source: any
+    destination: IP:wan:2022
+    target: 10.1.240.81:2022
+    associated_rule: associated
+  - descr: C2 Hak5 Squirrel HTTP
+    interface: wan
+    ipprotocol: inet
+    protocol: tcp
+    source: any
+    destination: IP:wan:8080
+    target: 10.1.240.81:8080
+    associated_rule: associated
+  gateways:
+  - name: WANGW
+    interface: wan
+    ipprotocol: inet
+    gateway: 185.25.195.177
+    descr: WAN Gateway
+    weight: 1
+  - name: l3sw
+    interface: lan
+    ipprotocol: inet
+    gateway: 10.1.255.1
+    descr: l3sw Fa0/48, routes the internal VLANs
+    weight: 1
+  default_gateway: WANGW
+  routes:
+  - descr: rack VLANs
+    network: 10.1.0.0/16
+    gateway: l3sw

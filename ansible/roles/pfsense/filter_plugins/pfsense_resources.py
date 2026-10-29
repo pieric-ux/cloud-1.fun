@@ -70,7 +70,70 @@ def pfsense_resources_from_config(config_xml):
                 entry[flag] = True
         rules.append(entry)
 
-    return {"aliases": aliases, "rules": rules}
+    nat_port_forwards = []
+    for nat in root.findall("./nat/rule"):
+        source, source_port = _address(nat.find("source"))
+        destination, destination_port = _address(nat.find("destination"))
+        target = nat.findtext("target") or ""
+        if nat.findtext("local-port"):
+            target += ":" + nat.findtext("local-port")
+        entry = {
+            "descr": nat.findtext("descr"),
+            "interface": nat.findtext("interface"),
+            "ipprotocol": nat.findtext("ipprotocol") or "inet",
+            "protocol": nat.findtext("protocol") or "tcp",
+            "source": source + (":" + source_port if source_port else ""),
+            "destination": destination + (":" + destination_port if destination_port else ""),
+            "target": target,
+            # The filter rule follows the port forward (created, updated,
+            # deleted with it): that is why it is not in "rules".
+            "associated_rule": "associated" if nat.findtext("associated-rule-id") else "none",
+        }
+        if nat.findtext("natreflection"):
+            entry["natreflection"] = nat.findtext("natreflection")
+        for flag in ("disabled", "nordr"):
+            if nat.find(flag) is not None:
+                entry[flag] = True
+        nat_port_forwards.append(entry)
+
+    gateways = []
+    for gw in root.findall("./gateways/gateway_item"):
+        entry = {
+            "name": gw.findtext("name"),
+            "interface": gw.findtext("interface"),
+            "ipprotocol": gw.findtext("ipprotocol") or "inet",
+            "gateway": gw.findtext("gateway"),
+            "descr": gw.findtext("descr") or "",
+            "weight": int(gw.findtext("weight") or 1),
+        }
+        if gw.findtext("monitor"):
+            entry["monitor"] = gw.findtext("monitor")
+        for xml_flag, option in (("disabled", "disabled"), ("monitor_disable", "monitor_disable"),
+                                 ("action_disable", "action_disable"), ("force_down", "force_down"),
+                                 ("nonlocalgateway", "nonlocalgateway")):
+            if gw.find(xml_flag) is not None:
+                entry[option] = True
+        gateways.append(entry)
+
+    routes = []
+    for route in root.findall("./staticroutes/route"):
+        entry = {
+            "descr": route.findtext("descr") or "",
+            "network": route.findtext("network"),
+            "gateway": route.findtext("gateway"),
+        }
+        if route.find("disabled") is not None:
+            entry["disabled"] = True
+        routes.append(entry)
+
+    return {
+        "aliases": aliases,
+        "rules": rules,
+        "nat_port_forwards": nat_port_forwards,
+        "gateways": gateways,
+        "default_gateway": root.findtext("./gateways/defaultgw4") or "",
+        "routes": routes,
+    }
 
 
 class FilterModule:
