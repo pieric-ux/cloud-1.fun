@@ -1,0 +1,6 @@
+---
+# iLO 4: read the CD/DVD virtual media resource (Inserted, Image, Oem.Hp).
+- name: Read CD/DVD virtual media state
+  ansible.builtin.uri:
+    url: "https://{{ ilo_host }}{{ redfish_cd_path }}"
+  register: redfish_cd_state

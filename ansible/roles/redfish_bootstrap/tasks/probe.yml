@@ -1,0 +1,45 @@
+---
+# Read-only probe of the BMC: nothing is changed on the server.
+- name: Read system inventory and boot override settings
+  community.general.redfish_info:
+    category: Systems
+    command: [GetSystemInventory, GetBootOverride]
+    baseuri: "{{ ilo_host }}"
+    username: "{{ ilo_user }}"
+    password: "{{ ilo_password }}"
+    validate_certs: "{{ ilo_validate_certs }}"
+  register: redfish_systems
+
+- name: Read manager inventory and virtual media slots
+  community.general.redfish_info:
+    category: Manager
+    command: [GetManagerInventory, GetVirtualMedia]
+    baseuri: "{{ ilo_host }}"
+    username: "{{ ilo_user }}"
+    password: "{{ ilo_password }}"
+    validate_certs: "{{ ilo_validate_certs }}"
+  register: redfish_manager
+
+- name: Show system information
+  ansible.builtin.debug:
+    var: redfish_systems.redfish_facts
+
+- name: Show manager and virtual media information
+  ansible.builtin.debug:
+    var: redfish_manager.redfish_facts
+
+# redfish_info filters its output: read the raw JSON to see the available
+# actions (standard InsertMedia vs Oem.Hp) and the allowed boot targets.
+- name: Read raw CD/DVD virtual media and system resources
+  ansible.builtin.uri:
+    url: "https://{{ ilo_host }}{{ item }}"
+  loop: ["{{ redfish_cd_path }}", "{{ redfish_system_path }}"]
+  register: redfish_raw
+
+- name: Show CD/DVD virtual media resource (actions, Oem.Hp)
+  ansible.builtin.debug:
+    var: redfish_raw.results[0].json
+
+- name: Show boot settings and allowed boot targets
+  ansible.builtin.debug:
+    var: redfish_raw.results[1].json.Boot

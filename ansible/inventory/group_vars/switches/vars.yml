@@ -6,26 +6,10 @@ ansible_network_os: cisco.ios.ios
 # ansible-pylibssh is built without it, paramiko < 4 still has it.
 ansible_network_cli_ssh_type: paramiko
 ansible_user: admin
-# Password differs per switch: see host_vars/<switch>.yml.
+# Password differs per switch: see host_vars/<switch>/vars.yml.
 
-# How 10-network.yml --tags apply pushes host_vars/<switch>/ios_resources.yml:
-# "resources" = cisco.ios resource modules (state replaced). Overridden per
-# host when the IOS is too old (see l3sw).
-ios_apply_mode: resources
+# Role defaults (apply mode, resources to snapshot): roles/ios_switch/defaults.
 
-# Resources read by 10-network.yml (state gathered). Overridden per host when
-# the IOS is too old for a resource parser.
-ios_snapshot_resources:
-  - hostname
-  - vlans
-  - interfaces
-  - l2_interfaces
-  - l3_interfaces
-  - lag_interfaces
-  - lacp_interfaces
-  - acls
-  - acl_interfaces
-  - static_routes
 # The admin account is privilege 15: no enable step. Also overrides
 # become=True / become_method=sudo from ansible.cfg, meaningless on IOS.
 ansible_become: false

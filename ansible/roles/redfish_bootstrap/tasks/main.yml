@@ -1,0 +1,6 @@
+---
+# Default entry point: the read-only probe only. The other actions are picked
+# explicitly with tasks_from (see 00-bootstrap.yml): media_test, build_iso,
+# install (destructive).
+- name: Read-only probe of the BMC
+  ansible.builtin.import_tasks: probe.yml

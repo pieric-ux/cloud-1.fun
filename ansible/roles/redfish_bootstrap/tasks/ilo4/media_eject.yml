@@ -1,0 +1,8 @@
+---
+# iLO 4: eject through the Oem.Hp action (the iLO fetches "<image>?EJECT").
+- name: Eject CD/DVD virtual media
+  ansible.builtin.uri:
+    url: "https://{{ ilo_host }}{{ redfish_cd_path }}Actions/Oem/Hp/HpiLOVirtualMedia.EjectVirtualMedia/"
+    method: POST
+    body_format: json
+    body: {}

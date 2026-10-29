@@ -1,0 +1,52 @@
+---
+# Mount/eject test: no boot change, no reboot. Use the stock ISO (iso_url,
+# interactive installer, wipes nothing), never the prepared one.
+- name: Virtual media mount/eject test
+  block:
+    - name: Read media state before the test
+      ansible.builtin.include_tasks:
+        file: "{{ redfish_vendor }}/media_state.yml"
+        apply: {tags: [always]}
+
+    - name: Eject media already inserted
+      ansible.builtin.include_tasks:
+        file: "{{ redfish_vendor }}/media_eject.yml"
+        apply: {tags: [always]}
+      when: redfish_cd_state.json.Inserted
+
+    - name: Insert the stock ISO
+      ansible.builtin.include_tasks:
+        file: "{{ redfish_vendor }}/media_insert.yml"
+        apply: {tags: [always]}
+      vars:
+        redfish_media_image: "{{ iso_url }}"
+
+    - name: Read media state after insert
+      ansible.builtin.include_tasks:
+        file: "{{ redfish_vendor }}/media_state.yml"
+        apply: {tags: [always]}
+
+    - name: Check ISO is inserted and no boot is scheduled on it
+      ansible.builtin.assert:
+        that:
+          - redfish_cd_state.json.Inserted
+          - redfish_cd_state.json.Image == iso_url
+          - not redfish_cd_state.json.Oem.Hp.BootOnNextServerReset
+        fail_msg: "Unexpected media state: {{ redfish_cd_state.json | to_json }}"
+
+  always:
+    # Eject whatever happened above: never leave media mounted on a live node.
+    - name: Eject the ISO
+      ansible.builtin.include_tasks:
+        file: "{{ redfish_vendor }}/media_eject.yml"
+        apply: {tags: [always], ignore_errors: true}
+
+    - name: Read media state after eject
+      ansible.builtin.include_tasks:
+        file: "{{ redfish_vendor }}/media_state.yml"
+        apply: {tags: [always]}
+
+    - name: Check ISO is ejected
+      ansible.builtin.assert:
+        that: not redfish_cd_state.json.Inserted
+        fail_msg: "Media still inserted, eject it from the iLO UI: {{ redfish_cd_state.json | to_json }}"

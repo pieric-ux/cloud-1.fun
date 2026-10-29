@@ -1,9 +1,11 @@
 ---
-# Layer 00 - step 1: read-only probe of the iLO through Redfish.
-# Nothing is changed on the server: no media mounted, no boot change, no reboot.
-# Run on one node first: ansible-playbook 00-bootstrap.yml --limit pve01
+# Layer 00 - bare metal through the BMC (role redfish_bootstrap).
+#   default            read-only probe:    ansible-playbook 00-bootstrap.yml --limit pve01
+#   --tags media-test  mount/eject the stock ISO, no boot change, no reboot
+#   --tags build-iso   build the auto-install ISO per host (local, Docker)
+#   --tags install     DESTRUCTIVE reinstall, needs -e pve_install_confirm=true
 
-- name: Probe iLO Redfish API of bare-metal hosts (read-only)
+- name: Bare-metal hosts through the BMC (probe, media test, ISO build)
   hosts: baremetal
   connection: local
   # Only HTTPS calls to the iLO: no local privilege needed (overrides become=True in ansible.cfg).
@@ -14,232 +16,37 @@
     # auto-discovery (may pick a broken pyenv shim). Kept at play level, not in
     # group_vars/baremetal: these hosts are also reached over SSH by later layers.
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  module_defaults: &ilo_api
+    ansible.builtin.uri:
+      user: "{{ ilo_user }}"
+      password: "{{ ilo_password }}"
+      force_basic_auth: true
+      validate_certs: "{{ ilo_validate_certs }}"
+      status_code: [200, 202, 204]
 
   tasks:
-    - name: Read system inventory and boot override settings
-      community.general.redfish_info:
-        category: Systems
-        command:
-          - GetSystemInventory
-          - GetBootOverride
-        baseuri: "{{ ilo_host }}"
-        username: "{{ ilo_user }}"
-        password: "{{ ilo_password }}"
-        validate_certs: "{{ ilo_validate_certs }}"
-      register: redfish_systems
+    - name: Read-only probe of the BMC
+      ansible.builtin.import_role:
+        name: redfish_bootstrap
+        tasks_from: probe
 
-    - name: Read manager inventory and virtual media slots
-      community.general.redfish_info:
-        category: Manager
-        command:
-          - GetManagerInventory
-          - GetVirtualMedia
-        baseuri: "{{ ilo_host }}"
-        username: "{{ ilo_user }}"
-        password: "{{ ilo_password }}"
-        validate_certs: "{{ ilo_validate_certs }}"
-      register: redfish_manager
-
-    - name: Show system information
-      ansible.builtin.debug:
-        var: redfish_systems.redfish_facts
-
-    - name: Show manager and virtual media information
-      ansible.builtin.debug:
-        var: redfish_manager.redfish_facts
-
-    # redfish_info filters its output: read the raw JSON to see the available
-    # actions (standard InsertMedia vs Oem.Hp) and the allowed boot targets.
-    - name: Read raw CD/DVD virtual media resource (slot 2 from GetVirtualMedia)
-      ansible.builtin.uri:
-        url: "https://{{ ilo_host }}/redfish/v1/Managers/1/VirtualMedia/2/"
-        method: GET
-        user: "{{ ilo_user }}"
-        password: "{{ ilo_password }}"
-        force_basic_auth: true
-        validate_certs: "{{ ilo_validate_certs }}"
-      register: redfish_vm_raw
-
-    - name: Read raw system resource
-      ansible.builtin.uri:
-        url: "https://{{ ilo_host }}/redfish/v1/Systems/1/"
-        method: GET
-        user: "{{ ilo_user }}"
-        password: "{{ ilo_password }}"
-        force_basic_auth: true
-        validate_certs: "{{ ilo_validate_certs }}"
-      register: redfish_sys_raw
-
-    - name: Show CD/DVD virtual media resource (actions, Oem.Hp)
-      ansible.builtin.debug:
-        var: redfish_vm_raw.json
-
-    - name: Show boot settings and allowed boot targets
-      ansible.builtin.debug:
-        var: redfish_sys_raw.json.Boot
-
-    # Mount/eject test: no boot change, no reboot. Tagged "never": only runs with
-    # --tags media-test. Use the stock ISO (interactive installer, wipes nothing).
     - name: Virtual media mount/eject test
+      ansible.builtin.import_role:
+        name: redfish_bootstrap
+        tasks_from: media_test
       tags: [never, media-test]
-      vars:
-        ilo_vm_cd: "https://{{ ilo_host }}/redfish/v1/Managers/1/VirtualMedia/2/"
-      block:
-        - name: Read CD/DVD virtual media state
-          ansible.builtin.uri:
-            url: "{{ ilo_vm_cd }}"
-            user: "{{ ilo_user }}"
-            password: "{{ ilo_password }}"
-            force_basic_auth: true
-            validate_certs: "{{ ilo_validate_certs }}"
-          register: vm_before
 
-        - name: Eject media already inserted
-          ansible.builtin.uri:
-            url: "{{ ilo_vm_cd }}Actions/Oem/Hp/HpiLOVirtualMedia.EjectVirtualMedia/"
-            method: POST
-            body_format: json
-            body: {}
-            user: "{{ ilo_user }}"
-            password: "{{ ilo_password }}"
-            force_basic_auth: true
-            validate_certs: "{{ ilo_validate_certs }}"
-          when: vm_before.json.Inserted
-
-        - name: Insert ISO into CD/DVD virtual media
-          ansible.builtin.uri:
-            url: "{{ ilo_vm_cd }}Actions/Oem/Hp/HpiLOVirtualMedia.InsertVirtualMedia/"
-            method: POST
-            body_format: json
-            body:
-              Image: "{{ iso_url }}"
-            user: "{{ ilo_user }}"
-            password: "{{ ilo_password }}"
-            force_basic_auth: true
-            validate_certs: "{{ ilo_validate_certs }}"
-
-        - name: Read CD/DVD virtual media state after insert
-          ansible.builtin.uri:
-            url: "{{ ilo_vm_cd }}"
-            user: "{{ ilo_user }}"
-            password: "{{ ilo_password }}"
-            force_basic_auth: true
-            validate_certs: "{{ ilo_validate_certs }}"
-          register: vm_inserted
-
-        - name: Check ISO is inserted and no boot is scheduled on it
-          ansible.builtin.assert:
-            that:
-              - vm_inserted.json.Inserted
-              - vm_inserted.json.Image == iso_url
-              - not vm_inserted.json.Oem.Hp.BootOnNextServerReset
-            fail_msg: "Unexpected media state: {{ vm_inserted.json | to_json }}"
-
-      always:
-        # Eject whatever happened above: never leave media mounted on a live node.
-        - name: Eject ISO
-          ansible.builtin.uri:
-            url: "{{ ilo_vm_cd }}Actions/Oem/Hp/HpiLOVirtualMedia.EjectVirtualMedia/"
-            method: POST
-            body_format: json
-            body: {}
-            user: "{{ ilo_user }}"
-            password: "{{ ilo_password }}"
-            force_basic_auth: true
-            validate_certs: "{{ ilo_validate_certs }}"
-          failed_when: false
-
-        - name: Read CD/DVD virtual media state after eject
-          ansible.builtin.uri:
-            url: "{{ ilo_vm_cd }}"
-            user: "{{ ilo_user }}"
-            password: "{{ ilo_password }}"
-            force_basic_auth: true
-            validate_certs: "{{ ilo_validate_certs }}"
-          register: vm_after
-
-        - name: Check ISO is ejected
-          ansible.builtin.assert:
-            that:
-              - not vm_after.json.Inserted
-            fail_msg: "Media still inserted, eject it from the iLO UI: {{ vm_after.json | to_json }}"
-
-    # Build one auto-install ISO per host (answer + first-boot hook embedded).
-    # Local only, touches no server. Tagged "never": run with --tags build-iso.
-    # The resulting ISO installs unattended and WIPES the target disk.
-    - name: Build auto-install ISO
+    - name: Build the auto-install ISO
+      ansible.builtin.import_role:
+        name: redfish_bootstrap
+        tasks_from: build_iso
       tags: [never, build-iso]
-      vars:
-        iso_image: pve-auto-install
-        iso_output: "pve-auto-{{ inventory_hostname }}.iso"
-      block:
-        - name: Create build directory
-          ansible.builtin.file:
-            path: "{{ pve_iso_build_dir }}"
-            state: directory
-            mode: "0700"
 
-        - name: Render answer.toml
-          ansible.builtin.template:
-            src: answer.toml.j2
-            dest: "{{ pve_iso_build_dir }}/answer.toml"
-            mode: "0600"
-          register: answer_file
-
-        - name: Render first-boot network hook
-          ansible.builtin.template:
-            src: first-boot.sh.j2
-            dest: "{{ pve_iso_build_dir }}/first-boot.sh"
-            mode: "0755"
-          register: first_boot_file
-
-        - name: Build the auto-install assistant image
-          ansible.builtin.command:
-            cmd: docker build --platform linux/amd64 -t {{ iso_image }} {{ playbook_dir }}/../00-bootstrap
-          run_once: true
-          changed_when: false
-
-        - name: Validate answer.toml with the official tool
-          ansible.builtin.command:
-            cmd: >-
-              docker run --rm --platform linux/amd64
-              -v {{ pve_iso_build_dir }}:/work
-              {{ iso_image }} validate-answer /work/answer.toml
-          changed_when: false
-
-        - name: Check if the ISO already exists
-          ansible.builtin.stat:
-            path: "{{ pve_iso_build_dir }}/{{ iso_output }}"
-          register: iso_stat
-
-        # Rebuilt only when the answer or the hook changed, or the ISO is missing.
-        - name: Prepare the ISO
-          ansible.builtin.command:
-            cmd: >-
-              docker run --rm --platform linux/amd64
-              -v {{ pve_iso_build_dir }}:/work
-              -v {{ pve_iso_source | dirname }}:/iso:ro
-              {{ iso_image }} prepare-iso /iso/{{ pve_iso_source | basename }}
-              --fetch-from iso
-              --answer-file /work/answer.toml
-              --on-first-boot /work/first-boot.sh
-              --tmp /work
-              --output /work/{{ iso_output }}
-          when: answer_file.changed or first_boot_file.changed or not iso_stat.stat.exists
-
-        # prepare-iso exits 0 even on failure: check the ISO was really written.
-        - name: Check the ISO was written
-          ansible.builtin.stat:
-            path: "{{ pve_iso_build_dir }}/{{ iso_output }}"
-          register: iso_built
-          failed_when: not iso_built.stat.exists
-
-# Layer 00 - DESTRUCTIVE: unattended reinstall of Proxmox, WIPES the system disk.
-# Never runs by default (tag "never") and refuses to run without confirmation:
+# DESTRUCTIVE: unattended reinstall, WIPES the system disk. Prerequisites: ISO
+# built (--tags build-iso) and served from 00-bootstrap/build/ (npx http-server),
+# node emptied of its VMs, group informed.
 #   ansible-playbook 00-bootstrap.yml --tags install --limit pve02 -e pve_install_confirm=true
-# Prerequisites: ISO built (--tags build-iso) and served from 00-bootstrap/build/
-# (npx http-server), node emptied of its VMs, group informed.
-- name: Reinstall Proxmox on bare-metal hosts through the iLO (DESTRUCTIVE)
+- name: Reinstall Proxmox on bare-metal hosts through the BMC (DESTRUCTIVE)
   hosts: baremetal
   connection: local
   become: false
@@ -250,152 +57,10 @@
   tags: [never, install]
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
-    pve_install_confirm: false
-    ilo_vm_cd: "https://{{ ilo_host }}/redfish/v1/Managers/1/VirtualMedia/2/"
-
-  module_defaults:
-    ansible.builtin.uri:
-      user: "{{ ilo_user }}"
-      password: "{{ ilo_password }}"
-      force_basic_auth: true
-      validate_certs: "{{ ilo_validate_certs }}"
-      status_code: [200, 202, 204]
+  module_defaults: *ilo_api
 
   tasks:
-    - name: Refuse to run without explicit confirmation
-      ansible.builtin.assert:
-        that: pve_install_confirm | bool
-        fail_msg: >-
-          This wipes {{ inventory_hostname }}. Re-run with -e pve_install_confirm=true
-          once the node is empty and the group agrees.
-
-    - name: Check the prepared ISO is served
-      ansible.builtin.uri:
-        url: "{{ pve_install_iso_url }}"
-        method: HEAD
-        user: null
-        password: null
-        force_basic_auth: false
-
-    - name: Install
-      block:
-        - name: Read CD/DVD virtual media state
-          ansible.builtin.uri:
-            url: "{{ ilo_vm_cd }}"
-          register: vm_before
-
-        - name: Eject media already inserted
-          ansible.builtin.uri:
-            url: "{{ ilo_vm_cd }}Actions/Oem/Hp/HpiLOVirtualMedia.EjectVirtualMedia/"
-            method: POST
-            body_format: json
-            body: {}
-          when: vm_before.json.Inserted
-
-        - name: Insert the prepared ISO
-          ansible.builtin.uri:
-            url: "{{ ilo_vm_cd }}Actions/Oem/Hp/HpiLOVirtualMedia.InsertVirtualMedia/"
-            method: POST
-            body_format: json
-            body:
-              Image: "{{ pve_install_iso_url }}"
-
-        - name: Boot once on the virtual CD at next reset
-          ansible.builtin.uri:
-            url: "{{ ilo_vm_cd }}"
-            method: PATCH
-            body_format: json
-            body:
-              Oem:
-                Hp:
-                  BootOnNextServerReset: true
-
-        - name: Read CD/DVD virtual media state after insert
-          ansible.builtin.uri:
-            url: "{{ ilo_vm_cd }}"
-          register: vm_ready
-
-        - name: Check the prepared ISO is inserted and armed for boot
-          ansible.builtin.assert:
-            that:
-              - vm_ready.json.Inserted
-              - vm_ready.json.Image == pve_install_iso_url
-              - vm_ready.json.Oem.Hp.BootOnNextServerReset
-            fail_msg: "Unexpected media state: {{ vm_ready.json | to_json }}"
-
-        - name: Read system power state and reset action
-          ansible.builtin.uri:
-            url: "https://{{ ilo_host }}/redfish/v1/Systems/1/"
-          register: system
-
-        - name: Reset the server (power on if it is off)
-          ansible.builtin.uri:
-            url: "https://{{ ilo_host }}{{ system.json.Actions['#ComputerSystem.Reset'].target }}"
-            method: POST
-            body_format: json
-            body:
-              ResetType: "{{ 'ForceRestart' if system.json.PowerState == 'On' else 'On' }}"
-
-        - name: Mark the reset as done
-          ansible.builtin.set_fact:
-            pve_install_reset_done: true
-
-      rescue:
-        # Failed before the reset: disarm and eject, the node keeps running as is.
-        # After the reset the installer may be reading the ISO: leave it alone.
-        - name: Disarm boot on virtual CD
-          ansible.builtin.uri:
-            url: "{{ ilo_vm_cd }}"
-            method: PATCH
-            body_format: json
-            body:
-              Oem:
-                Hp:
-                  BootOnNextServerReset: false
-          when: not (pve_install_reset_done | default(false))
-          failed_when: false
-
-        - name: Eject the prepared ISO
-          ansible.builtin.uri:
-            url: "{{ ilo_vm_cd }}Actions/Oem/Hp/HpiLOVirtualMedia.EjectVirtualMedia/"
-            method: POST
-            body_format: json
-            body: {}
-          when: not (pve_install_reset_done | default(false))
-          failed_when: false
-
-        - name: Stop after cleanup
-          ansible.builtin.fail:
-            msg: "Install aborted on {{ inventory_hostname }}, see the failed task above."
-
-    # The old system must go down first, otherwise the wait below would succeed
-    # on the still-running node.
-    - name: Wait for the node to go down
-      ansible.builtin.wait_for:
-        host: "{{ ansible_host }}"
-        port: 8006
-        state: stopped
-        timeout: 600
-
-    # Install + reboot + first-boot network hook: the Proxmox UI comes back
-    # on the management address only if the hook applied the real layout.
-    - name: Wait for the freshly installed Proxmox UI
-      ansible.builtin.wait_for:
-        host: "{{ ansible_host }}"
-        port: 8006
-        state: started
-        delay: 120
-        timeout: 3600
-
-    - name: Eject the prepared ISO
-      ansible.builtin.uri:
-        url: "{{ ilo_vm_cd }}Actions/Oem/Hp/HpiLOVirtualMedia.EjectVirtualMedia/"
-        method: POST
-        body_format: json
-        body: {}
-
-    # Reinstall = new SSH host keys: drop the old one, accept-new picks the new.
-    - name: Forget the old SSH host key
-      ansible.builtin.known_hosts:
-        name: "{{ ansible_host }}"
-        state: absent
+    - name: Reinstall Proxmox
+      ansible.builtin.import_role:
+        name: redfish_bootstrap
+        tasks_from: install

@@ -140,3 +140,5 @@ ansible.log
 /build/
 # SSH automation key (private key must never be committed)
 /key/
+# Python bytecode (role filter plugins)
+__pycache__/

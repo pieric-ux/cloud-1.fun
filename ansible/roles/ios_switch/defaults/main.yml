@@ -1,0 +1,37 @@
+---
+# How apply pushes host_vars/<switch>/ios_resources.yml:
+#   resources = cisco.ios resource modules, state replaced (IOS 15.x)
+#   rendered  = commands rendered offline + ios_config (old IOS without "| section")
+ios_apply_mode: resources
+
+# Resources read live by snapshot (state gathered). An IOS too old for the live
+# parsers sets [] and gets its running config parsed offline instead.
+ios_snapshot_resources:
+  - hostname
+  - vlans
+  - interfaces
+  - l2_interfaces
+  - l3_interfaces
+  - lag_interfaces
+  - lacp_interfaces
+  - acls
+  - acl_interfaces
+  - static_routes
+
+# Resources parsed offline from the saved running config. vlans and
+# lacp_interfaces are left out: their parsers still try to reach the device.
+ios_parse_resources:
+  - hostname
+  - interfaces
+  - l2_interfaces
+  - l3_interfaces
+  - lag_interfaces
+  - acls
+  - acl_interfaces
+  - static_routes
+
+# Snapshot output (gitignored: running config holds hashes and keys).
+ios_snapshot_dir: "{{ playbook_dir }}/../build/network/{{ inventory_hostname }}"
+
+# A real apply (no --check) is refused unless set to true on the command line.
+network_apply_confirm: false

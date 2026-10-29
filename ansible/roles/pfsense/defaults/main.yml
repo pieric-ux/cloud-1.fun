@@ -1,0 +1,6 @@
+---
+# Whole pfSense configuration in one file.
+pfsense_config_path: /cf/conf/config.xml
+
+# Snapshot output (gitignored: config.xml holds keys and password hashes).
+pfsense_snapshot_dir: "{{ playbook_dir }}/../build/network/{{ inventory_hostname }}"

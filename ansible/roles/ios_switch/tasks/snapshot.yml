@@ -1,0 +1,60 @@
+---
+# Read-only snapshot: only "show" commands on the switch. Writes, in
+# ios_snapshot_dir: running-config.txt, resources.yml (raw) and
+# ios_resources.yml (proposal to diff against host_vars/<switch>/).
+- name: Gather IOS facts and network resources (state gathered, no change)
+  cisco.ios.ios_facts:
+    gather_subset: [min]
+    gather_network_resources: "{{ ios_snapshot_resources }}"
+
+- name: Read running config
+  cisco.ios.ios_command:
+    commands: show running-config
+  register: ios_running_config
+
+- name: Create snapshot directory
+  ansible.builtin.file:
+    path: "{{ ios_snapshot_dir }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+
+- name: Save running config
+  ansible.builtin.copy:
+    content: "{{ ios_running_config.stdout[0] }}\n"
+    dest: "{{ ios_snapshot_dir }}/running-config.txt"
+    mode: "0600"
+  delegate_to: localhost
+
+- name: Keep live resources
+  ansible.builtin.set_fact:
+    ios_raw_resources: "{{ ansible_facts['network_resources'] }}"
+  when: ios_snapshot_resources | length > 0
+
+- name: Parse the running config offline (IOS without live parsers)
+  ansible.builtin.include_tasks:
+    file: parse.yml
+    apply: {tags: [always]}
+  when: ios_snapshot_resources | length == 0
+
+- name: Save raw resources
+  ansible.builtin.copy:
+    content: "{{ ios_raw_resources | to_nice_yaml(indent=2) }}"
+    dest: "{{ ios_snapshot_dir }}/resources.yml"
+    mode: "0600"
+  delegate_to: localhost
+
+# Same conversion as the committed host_vars: diff this file against
+# host_vars/<switch>/ios_resources.yml to spot changes made on the switch.
+- name: Save the ios_resources proposal
+  ansible.builtin.copy:
+    content: "{{ {'ios_resources': ios_raw_resources | ios_resources_prune} | to_nice_yaml(indent=2, sort_keys=false) }}"
+    dest: "{{ ios_snapshot_dir }}/ios_resources.yml"
+    mode: "0600"
+  delegate_to: localhost
+
+- name: Show device identity
+  ansible.builtin.debug:
+    msg: >-
+      {{ ansible_facts['net_hostname'] }} | {{ ansible_facts['net_model'] | default('?') }}
+      | IOS {{ ansible_facts['net_version'] }}

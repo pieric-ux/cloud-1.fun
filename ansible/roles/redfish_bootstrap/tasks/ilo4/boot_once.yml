@@ -1,0 +1,12 @@
+---
+# iLO 4: boot once on the virtual CD at next reset. The iLO resets the flag
+# to false after that boot. Input: redfish_boot_once (true to arm, false to disarm).
+- name: Set boot once on virtual CD to {{ redfish_boot_once }}
+  ansible.builtin.uri:
+    url: "https://{{ ilo_host }}{{ redfish_cd_path }}"
+    method: PATCH
+    body_format: json
+    body:
+      Oem:
+        Hp:
+          BootOnNextServerReset: "{{ redfish_boot_once | bool }}"

@@ -1,0 +1,10 @@
+---
+# iLO 4 has no standard #VirtualMedia.InsertMedia: only the Oem.Hp action.
+# Input: redfish_media_image (HTTP URL, server must support Range requests).
+- name: Insert image into CD/DVD virtual media
+  ansible.builtin.uri:
+    url: "https://{{ ilo_host }}{{ redfish_cd_path }}Actions/Oem/Hp/HpiLOVirtualMedia.InsertVirtualMedia/"
+    method: POST
+    body_format: json
+    body:
+      Image: "{{ redfish_media_image }}"

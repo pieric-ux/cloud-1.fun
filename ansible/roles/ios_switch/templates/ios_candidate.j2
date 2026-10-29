@@ -2,7 +2,7 @@
     Top-level lines open a block, the following commands are its children. -#}
 {%- set blocks = {} -%}
 {%- set order = [] -%}
-{%- for v in res.vlans | default([]) -%}
+{%- for v in ios_resources.vlans | default([]) -%}
 {%- set _ = order.append('vlan ' ~ v.vlan_id) -%}
 {%- set _ = blocks.update({'vlan ' ~ v.vlan_id: [' name ' ~ v.name]}) -%}
 {%- endfor -%}

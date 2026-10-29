@@ -1,0 +1,21 @@
+---
+# BMC flavour: selects tasks/<vendor>/ for the vendor-specific calls (virtual
+# media, boot once). Only iLO 4 exists today; an iLO 5 would add tasks/ilo5/
+# using the standard Redfish actions instead of Oem.Hp.
+redfish_vendor: ilo4
+
+# Redfish resources (iLO 4 DL380 Gen9: slot 2 is the CD/DVD virtual media).
+redfish_system_path: /redfish/v1/Systems/1/
+redfish_cd_path: /redfish/v1/Managers/1/VirtualMedia/2/
+
+# Install is destructive: refused unless set to true on the command line.
+pve_install_confirm: false
+# The old system must go down, then the fresh one come back on 8006.
+pve_install_down_timeout: 600
+pve_install_up_delay: 120
+pve_install_up_timeout: 3600
+
+# ISO build container (00-bootstrap/Dockerfile).
+pve_iso_image: pve-auto-install
+pve_iso_docker_context: "{{ playbook_dir }}/../00-bootstrap"
+pve_iso_output: "pve-auto-{{ inventory_hostname }}.iso"

@@ -1,0 +1,124 @@
+---
+# DESTRUCTIVE: unattended reinstall of Proxmox, WIPES the system disk.
+- name: Refuse to run without explicit confirmation
+  ansible.builtin.assert:
+    that: pve_install_confirm | bool
+    fail_msg: >-
+      This wipes {{ inventory_hostname }}. Re-run with -e pve_install_confirm=true
+      once the node is empty and the group agrees.
+
+- name: Check the prepared ISO is served
+  ansible.builtin.uri:
+    url: "{{ pve_install_iso_url }}"
+    method: HEAD
+    user: null
+    password: null
+    force_basic_auth: false
+
+- name: Arm the install
+  block:
+    - name: Read media state
+      ansible.builtin.include_tasks:
+        file: "{{ redfish_vendor }}/media_state.yml"
+        apply: {tags: [always]}
+
+    - name: Eject media already inserted
+      ansible.builtin.include_tasks:
+        file: "{{ redfish_vendor }}/media_eject.yml"
+        apply: {tags: [always]}
+      when: redfish_cd_state.json.Inserted
+
+    - name: Insert the prepared ISO
+      ansible.builtin.include_tasks:
+        file: "{{ redfish_vendor }}/media_insert.yml"
+        apply: {tags: [always]}
+      vars:
+        redfish_media_image: "{{ pve_install_iso_url }}"
+
+    - name: Boot once on the virtual CD at next reset
+      ansible.builtin.include_tasks:
+        file: "{{ redfish_vendor }}/boot_once.yml"
+        apply: {tags: [always]}
+      vars:
+        redfish_boot_once: true
+
+    - name: Read media state after insert
+      ansible.builtin.include_tasks:
+        file: "{{ redfish_vendor }}/media_state.yml"
+        apply: {tags: [always]}
+
+    - name: Check the prepared ISO is inserted and armed for boot
+      ansible.builtin.assert:
+        that:
+          - redfish_cd_state.json.Inserted
+          - redfish_cd_state.json.Image == pve_install_iso_url
+          - redfish_cd_state.json.Oem.Hp.BootOnNextServerReset
+        fail_msg: "Unexpected media state: {{ redfish_cd_state.json | to_json }}"
+
+    - name: Read system power state and reset action
+      ansible.builtin.uri:
+        url: "https://{{ ilo_host }}{{ redfish_system_path }}"
+      register: redfish_system
+
+    - name: Reset the server (power on if it is off)
+      ansible.builtin.uri:
+        url: "https://{{ ilo_host }}{{ redfish_system.json.Actions['#ComputerSystem.Reset'].target }}"
+        method: POST
+        body_format: json
+        body:
+          ResetType: "{{ 'ForceRestart' if redfish_system.json.PowerState == 'On' else 'On' }}"
+
+    - name: Mark the reset as done
+      ansible.builtin.set_fact:
+        pve_install_reset_done: true
+
+  rescue:
+    # Failed before the reset: disarm and eject, the node keeps running as is.
+    # After the reset the installer may be reading the ISO: leave it alone.
+    - name: Disarm boot on virtual CD
+      ansible.builtin.include_tasks:
+        file: "{{ redfish_vendor }}/boot_once.yml"
+        apply: {tags: [always], ignore_errors: true}
+      vars:
+        redfish_boot_once: false
+      when: not (pve_install_reset_done | default(false))
+
+    - name: Eject the prepared ISO
+      ansible.builtin.include_tasks:
+        file: "{{ redfish_vendor }}/media_eject.yml"
+        apply: {tags: [always], ignore_errors: true}
+      when: not (pve_install_reset_done | default(false))
+
+    - name: Stop after cleanup
+      ansible.builtin.fail:
+        msg: "Install aborted on {{ inventory_hostname }}, see the failed task above."
+
+# The old system must go down first, otherwise the wait below would succeed
+# on the still-running node.
+- name: Wait for the node to go down
+  ansible.builtin.wait_for:
+    host: "{{ ansible_host }}"
+    port: 8006
+    state: stopped
+    timeout: "{{ pve_install_down_timeout }}"
+
+# Install + reboot + first-boot network hook: the Proxmox UI comes back
+# on the management address only if the hook applied the real layout.
+- name: Wait for the freshly installed Proxmox UI
+  ansible.builtin.wait_for:
+    host: "{{ ansible_host }}"
+    port: 8006
+    state: started
+    delay: "{{ pve_install_up_delay }}"
+    timeout: "{{ pve_install_up_timeout }}"
+
+- name: Eject the prepared ISO
+  ansible.builtin.include_tasks:
+    file: "{{ redfish_vendor }}/media_eject.yml"
+    apply: {tags: [always]}
+
+# Reinstall = new SSH host keys: drop the old one, accept-new picks the new.
+- name: Forget the old SSH host key
+  ansible.builtin.known_hosts:
+    name: "{{ ansible_host }}"
+    state: absent

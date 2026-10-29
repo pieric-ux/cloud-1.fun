@@ -29,25 +29,35 @@ point zéro manuel → réseau (10) → Synology → bare metal (00) → VMs (20
 cloud-1-iac/
 ├── ansible/              # projet Ansible partagé par les couches 00, 10 et 30
 │   ├── site.yml          # point d'entrée : importe 00 → 10 → 30
-│   ├── 00-bootstrap.yml  # Redfish/iLO (tourne sur le laptop, connection: local)
-│   ├── 10-network.yml
+│   ├── 00-bootstrap.yml  # appelle le rôle redfish_bootstrap
+│   ├── 10-network.yml    # appelle les rôles ios_switch et pfsense
 │   ├── 30-config.yml
-│   ├── templates/        # answer.toml.j2 (auto-install Proxmox)
-│   ├── inventory/        # zones/ (où) + baremetal/vms/lxc (quoi), group_vars, host_vars
+│   ├── inventory/        # zones/ (où) + baremetal/vms/lxc/network (quoi), group_vars, host_vars
 │   └── roles/
-├── 00-bootstrap/         # hors Ansible : ISO (gitignoré), build de l'ISO auto-install
+│       ├── redfish_bootstrap/  # couche 00 : BMC (iLO), ISO auto-install, réinstallation
+│       ├── ios_switch/         # couche 10 : switchs Cisco, config as code
+│       ├── pfsense/            # couche 10 : pfSense (snapshot pour l'instant)
+│       └── common, users, ssh-hardening, cis-hardening   # couche 30
+├── 00-bootstrap/         # hors Ansible : Dockerfile, ISO de base (gitignoré), build/ (gitignoré)
 ├── 20-proxmox/           # Terraform
+├── build/                # gitignoré : snapshots réseau
+├── key/                  # gitignoré : clé SSH automation
 ├── docs/
 └── Makefile
 ```
 
+Les playbooks ne contiennent aucune logique : un appel de rôle par action
+(`import_role` + `tasks_from`), choisi par tag. Chaque rôle a un README et un
+`tasks/main.yml` qui ne lance que son action sans danger (lecture seule).
+
 ## Prérequis (machine de contrôle)
 
-- **Ansible** via pipx, avec passlib (nécessaire au filtre `password_hash`
-  depuis Python 3.13) :
+- **Ansible** via pipx, avec passlib (filtre `password_hash` depuis Python
+  3.13), et les bibliothèques SSH des switchs. Les IOS 12.2/15.2 n'offrent que
+  du kex SHA-1 : paramiko < 4 obligatoire.
   ```bash
   pipx install --include-deps ansible
-  pipx inject ansible passlib
+  pipx inject ansible passlib ansible-pylibssh 'paramiko<4'
   ```
 - **Collections Ansible** :
   ```bash
@@ -56,7 +66,7 @@ cloud-1-iac/
 - **Mot de passe du vault** dans `~/.ansible/.vault_pass_cloud1` (droits `600`,
   hors repo), référencé par `vault_password_file` dans `ansible/ansible.cfg`.
   Le mot de passe est rangé dans Bitwarden.
-- **Clé SSH automation** (hors repo).
+- **Clé SSH automation** dans `key/` (gitignoré) : `key/ansible`, droits `600`.
 - **Node.js / npx** : sert l'ISO aux iLO (`npx http-server`, requêtes HTTP Range
   obligatoires — `python3 -m http.server` ne convient pas).
 - **Docker** : conteneur Debian pour `proxmox-auto-install-assistant`
@@ -92,6 +102,15 @@ ansible-playbook 00-bootstrap.yml --tags build-iso
 # 00-bootstrap/build/ servi par npx http-server
 ansible-playbook 00-bootstrap.yml --tags install --limit pve02 -e pve_install_confirm=true
 
+# Couche 10 — snapshot lecture seule des switchs et de pfSense → build/network/
+ansible-playbook 10-network.yml
+
+# Couche 10 — prévisualiser l'application de la config des switchs (doit afficher 0 changement)
+ansible-playbook 10-network.yml --tags apply --check --diff --limit l2sw
+
+# Couche 10 — appliquer réellement (après le --check)
+ansible-playbook 10-network.yml --tags apply --limit l2sw -e network_apply_confirm=true
+
 # Couche 30 — configuration des VMs
 ansible-playbook 30-config.yml
 ```
@@ -105,4 +124,5 @@ ansible-playbook 30-config.yml
   Les secrets sont préfixés `vault_` et référencés depuis `vars.yml` ou `host_vars`.
 - Mot de passe root Proxmox stocké en clair dans le vault, **haché au rendu**
   de l'`answer.toml` : l'ISO est servi en HTTP et ne doit contenir que le hash.
-- Ignorés par git : tfstate, tfvars, ISO, `ansible.log`, fichiers de mot de passe.
+- Ignorés par git : tfstate, tfvars, ISO, `ansible.log`, fichiers de mot de passe,
+  `build/` (configs réseau sauvegardées : hashes, clés), `key/`.

@@ -1,0 +1,66 @@
+---
+# Build one auto-install ISO per host (answer + first-boot hook embedded).
+# Local only, touches no server. The resulting ISO installs unattended and
+# WIPES the target disk.
+- name: Create build directory
+  ansible.builtin.file:
+    path: "{{ pve_iso_build_dir }}"
+    state: directory
+    mode: "0700"
+
+- name: Render answer.toml
+  ansible.builtin.template:
+    src: answer.toml.j2
+    dest: "{{ pve_iso_build_dir }}/answer.toml"
+    mode: "0600"
+  register: answer_file
+
+- name: Render first-boot network hook
+  ansible.builtin.template:
+    src: first-boot.sh.j2
+    dest: "{{ pve_iso_build_dir }}/first-boot.sh"
+    mode: "0755"
+  register: first_boot_file
+
+- name: Build the auto-install assistant image
+  ansible.builtin.command:
+    cmd: docker build --platform linux/amd64 -t {{ pve_iso_image }} {{ pve_iso_docker_context }}
+  run_once: true
+  changed_when: false
+
+- name: Validate answer.toml with the official tool
+  ansible.builtin.command:
+    cmd: >-
+      docker run --rm --platform linux/amd64
+      -v {{ pve_iso_build_dir }}:/work
+      {{ pve_iso_image }} validate-answer /work/answer.toml
+  changed_when: false
+
+- name: Check if the ISO already exists
+  ansible.builtin.stat:
+    path: "{{ pve_iso_build_dir }}/{{ pve_iso_output }}"
+  register: iso_stat
+
+# Rebuilt only when the answer or the hook changed, or the ISO is missing.
+# prepare-iso copies the source ISO next to it unless --tmp is given, and the
+# source folder is mounted read-only.
+- name: Prepare the ISO
+  ansible.builtin.command:
+    cmd: >-
+      docker run --rm --platform linux/amd64
+      -v {{ pve_iso_build_dir }}:/work
+      -v {{ pve_iso_source | dirname }}:/iso:ro
+      {{ pve_iso_image }} prepare-iso /iso/{{ pve_iso_source | basename }}
+      --fetch-from iso
+      --answer-file /work/answer.toml
+      --on-first-boot /work/first-boot.sh
+      --tmp /work
+      --output /work/{{ pve_iso_output }}
+  when: answer_file.changed or first_boot_file.changed or not iso_stat.stat.exists
+
+# prepare-iso exits 0 even on failure: check the ISO was really written.
+- name: Check the ISO was written
+  ansible.builtin.stat:
+    path: "{{ pve_iso_build_dir }}/{{ pve_iso_output }}"
+  register: iso_built
+  failed_when: not iso_built.stat.exists

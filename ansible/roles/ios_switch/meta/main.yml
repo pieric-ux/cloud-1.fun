@@ -1,0 +1,6 @@
+galaxy_info:
+  author: pieric
+  description: Cisco IOS switch configuration as code (snapshot, offline parse, apply)
+  license: MIT
+  min_ansible_version: "2.17"
+dependencies: []

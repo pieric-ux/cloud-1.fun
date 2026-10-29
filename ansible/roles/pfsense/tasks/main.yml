@@ -1,0 +1,4 @@
+---
+# Default entry point: the read-only snapshot only.
+- name: Read-only snapshot of pfSense
+  ansible.builtin.import_tasks: snapshot.yml

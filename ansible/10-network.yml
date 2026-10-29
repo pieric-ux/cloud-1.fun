@@ -1,62 +1,26 @@
 ---
-# Layer 10 - step 1: read-only snapshot of the network devices.
-# Nothing is pushed: only "show" commands on the switches, a file copy from pfSense.
-# The structured output is the starting point of the config-as-code (host_vars).
-# Output goes to build/network/<host>/ (gitignored: may hold secrets and hashes).
-# Run on one device first: ansible-playbook 10-network.yml --limit l2sw
+# Layer 10 - network devices.
+# Switches (role ios_switch):
+#   default         read-only snapshot -> build/network/<switch>/
+#                   ansible-playbook 10-network.yml --limit l2sw
+#   --tags apply    push host_vars/<switch>/ios_resources.yml; preview first:
+#                   ansible-playbook 10-network.yml --tags apply --check --diff --limit l2sw
+#                   a real run also needs -e network_apply_confirm=true
+# pfSense (role pfsense):
+#   default         read-only copy of config.xml -> build/network/pfsense/
 
 - name: Snapshot Cisco switches (read-only)
   hosts: switches
   gather_facts: false
-  # Local file writes below are delegated to the laptop: no sudo there.
+  # Local file writes are delegated to the laptop: no sudo there.
   become: false
-  vars:
-    snapshot_dir: "{{ playbook_dir }}/../build/network/{{ inventory_hostname }}"
 
   tasks:
-    - name: Gather IOS facts and network resources (state gathered, no change)
-      cisco.ios.ios_facts:
-        gather_subset: [min]
-        gather_network_resources: "{{ ios_snapshot_resources }}"
+    - name: Snapshot the switch
+      ansible.builtin.import_role:
+        name: ios_switch
+        tasks_from: snapshot
 
-    - name: Read running config
-      cisco.ios.ios_command:
-        commands: show running-config
-      register: running_config
-
-    - name: Create snapshot directory
-      ansible.builtin.file:
-        path: "{{ snapshot_dir }}"
-        state: directory
-        mode: "0700"
-      delegate_to: localhost
-
-    - name: Save structured resources (base for host_vars)
-      ansible.builtin.copy:
-        content: "{{ ansible_facts['network_resources'] | to_nice_yaml(indent=2) }}"
-        dest: "{{ snapshot_dir }}/resources.yml"
-        mode: "0600"
-      delegate_to: localhost
-      when: ios_snapshot_resources | length > 0
-
-    - name: Save running config
-      ansible.builtin.copy:
-        content: "{{ running_config.stdout[0] }}\n"
-        dest: "{{ snapshot_dir }}/running-config.txt"
-        mode: "0600"
-      delegate_to: localhost
-
-    - name: Show device identity
-      ansible.builtin.debug:
-        msg: >-
-          {{ ansible_facts['net_hostname'] }} | {{ ansible_facts['net_model'] | default('?') }}
-          | IOS {{ ansible_facts['net_version'] }}
-
-# Layer 10 - step 2: push host_vars/<switch>/ios_resources.yml (state replaced:
-# only the resources described are touched). Never runs by default.
-# Always preview first, it must show no change while the code matches the switch:
-#   ansible-playbook 10-network.yml --tags apply --check --diff --limit l2sw
-# A real run (no --check) also needs -e network_apply_confirm=true.
 - name: Apply switch configuration
   hosts: switches
   gather_facts: false
@@ -64,145 +28,20 @@
   serial: 1
   any_errors_fatal: true
   tags: [never, apply]
-  vars:
-    network_apply_confirm: false
-    res: "{{ ios_resources }}"
 
   tasks:
-    - name: Refuse a real run without explicit confirmation
-      ansible.builtin.assert:
-        that: ansible_check_mode or (network_apply_confirm | bool)
-        fail_msg: >-
-          Real change on {{ inventory_hostname }}: preview with --check --diff,
-          then re-run with -e network_apply_confirm=true.
-
-    - name: Apply with resource modules
-      when: ios_apply_mode == 'resources'
-      block:
-        - name: VLANs
-          cisco.ios.ios_vlans: {config: "{{ res.vlans }}", state: replaced}
-          when: res.vlans is defined
-
-        - name: ACLs
-          cisco.ios.ios_acls: {config: "{{ res.acls }}", state: replaced}
-          when: res.acls is defined
-
-        - name: Interfaces (description, enabled, speed...)
-          cisco.ios.ios_interfaces: {config: "{{ res.interfaces }}", state: replaced}
-          when: res.interfaces is defined
-
-        - name: Port-channels (LAG members)
-          cisco.ios.ios_lag_interfaces: {config: "{{ res.lag_interfaces }}", state: replaced}
-          when: res.lag_interfaces is defined
-
-        - name: LACP per interface
-          cisco.ios.ios_lacp_interfaces: {config: "{{ res.lacp_interfaces }}", state: replaced}
-          when: res.lacp_interfaces is defined
-
-        - name: L2 interfaces (access, trunk, allowed VLANs)
-          cisco.ios.ios_l2_interfaces: {config: "{{ res.l2_interfaces }}", state: replaced}
-          when: res.l2_interfaces is defined
-
-        - name: L3 interfaces (SVI addresses)
-          cisco.ios.ios_l3_interfaces: {config: "{{ res.l3_interfaces }}", state: replaced}
-          when: res.l3_interfaces is defined
-
-        - name: ACLs bound to interfaces
-          cisco.ios.ios_acl_interfaces: {config: "{{ res.acl_interfaces }}", state: replaced}
-          when: res.acl_interfaces is defined
-
-        - name: Static routes
-          cisco.ios.ios_static_routes: {config: "{{ res.static_routes }}", state: replaced}
-          when: res.static_routes is defined
-
-    # Old IOS (no "| section"): commands rendered offline from the same YAML,
-    # then pushed with ios_config, which only needs "show running-config".
-    - name: Apply with rendered commands + ios_config
-      when: ios_apply_mode == 'rendered'
-      block:
-        - name: Render commands offline from the YAML
-          # Rendering never needs the device: any connection attempt goes to
-          # 127.0.0.1 and fails instead of reaching the switch.
-          vars:
-            ansible_host: 127.0.0.1
-          block:
-            - name: Render interfaces
-              cisco.ios.ios_interfaces: {config: "{{ res.interfaces }}", state: rendered}
-              register: r_interfaces
-              when: res.interfaces is defined
-
-            - name: Render port-channels
-              cisco.ios.ios_lag_interfaces: {config: "{{ res.lag_interfaces }}", state: rendered}
-              register: r_lag
-              when: res.lag_interfaces is defined
-
-            - name: Render L2 interfaces
-              cisco.ios.ios_l2_interfaces: {config: "{{ res.l2_interfaces }}", state: rendered}
-              register: r_l2
-              when: res.l2_interfaces is defined
-
-            - name: Render L3 interfaces
-              cisco.ios.ios_l3_interfaces: {config: "{{ res.l3_interfaces }}", state: rendered}
-              register: r_l3
-              when: res.l3_interfaces is defined
-
-            - name: Render ACLs
-              cisco.ios.ios_acls: {config: "{{ res.acls }}", state: rendered}
-              register: r_acls
-              when: res.acls is defined
-
-            - name: Render ACLs bound to interfaces
-              cisco.ios.ios_acl_interfaces: {config: "{{ res.acl_interfaces }}", state: rendered}
-              register: r_acl_if
-              when: res.acl_interfaces is defined
-
-            - name: Render static routes
-              cisco.ios.ios_static_routes: {config: "{{ res.static_routes }}", state: rendered}
-              register: r_routes
-              when: res.static_routes is defined
-
-            # ios_vlans tries to reach the device even when rendering: VLANs are
-            # simple enough to write directly (see templates/ios_candidate.j2).
-            - name: Build the candidate config (top-level blocks, indented children)
-              ansible.builtin.set_fact:
-                ios_candidate_lines: "{{ lookup('ansible.builtin.template', 'ios_candidate.j2') | split('\n') | select | list }}"
-
-        - name: Save the candidate config for review
-          ansible.builtin.copy:
-            content: "{{ ios_candidate_lines | join('\n') }}\n"
-            dest: "{{ playbook_dir }}/../build/network/{{ inventory_hostname }}/candidate.cfg"
-            mode: "0600"
-          delegate_to: localhost
-          check_mode: false
-
-        - name: Push the candidate config (only missing lines are sent)
-          cisco.ios.ios_config:
-            src: "{{ playbook_dir }}/../build/network/{{ inventory_hostname }}/candidate.cfg"
+    - name: Apply the configuration as code
+      ansible.builtin.import_role:
+        name: ios_switch
+        tasks_from: apply
 
 - name: Snapshot pfSense (read-only)
   hosts: firewall
   gather_facts: false
   become: false
-  vars:
-    snapshot_dir: "{{ playbook_dir }}/../build/network/{{ inventory_hostname }}"
 
   tasks:
-    - name: Create snapshot directory
-      ansible.builtin.file:
-        path: "{{ snapshot_dir }}"
-        state: directory
-        mode: "0700"
-      delegate_to: localhost
-
-    # Whole pfSense config in one file (interfaces, VLANs, rules, NAT, OpenVPN...).
-    - name: Copy config.xml
-      ansible.builtin.fetch:
-        src: /cf/conf/config.xml
-        dest: "{{ snapshot_dir }}/config.xml"
-        flat: true
-
-    - name: Restrict access to the copied config
-      ansible.builtin.file:
-        path: "{{ snapshot_dir }}/config.xml"
-        mode: "0600"
-      delegate_to: localhost
+    - name: Snapshot pfSense
+      ansible.builtin.import_role:
+        name: pfsense
+        tasks_from: snapshot

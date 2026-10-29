@@ -1,13 +1,28 @@
 ---
+# Layer 30 - OS configuration of the VMs (roles from infra04).
+#   default        every role
+#   --tags <role>  one role only, e.g. --tags ssh-hardening
+
 - name: Apply common configuration, admin accounts and SSH hardening to VMs
   hosts: vms:!lxc
-  roles:
-    - role: common
-      tags: common
-    - role: users
-      tags: users
-    - role: ssh-hardening
-      tags: ssh-hardening
-    - role: cis-hardening
-      tags: cis-hardening
 
+  tasks:
+    - name: Common configuration (packages, chrony, timezone, motd)
+      ansible.builtin.import_role:
+        name: common
+      tags: common
+
+    - name: Admin and automation accounts
+      ansible.builtin.import_role:
+        name: users
+      tags: users
+
+    - name: SSH hardening
+      ansible.builtin.import_role:
+        name: ssh-hardening
+      tags: ssh-hardening
+
+    - name: CIS hardening
+      ansible.builtin.import_role:
+        name: cis-hardening
+      tags: cis-hardening

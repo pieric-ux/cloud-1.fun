@@ -1,0 +1,14 @@
+---
+# Push host_vars/<switch>/ios_resources.yml. Always preview first with
+# --check --diff: it must show no change while the code matches the switch.
+- name: Refuse a real run without explicit confirmation
+  ansible.builtin.assert:
+    that: ansible_check_mode or (network_apply_confirm | bool)
+    fail_msg: >-
+      Real change on {{ inventory_hostname }}: preview with --check --diff,
+      then re-run with -e network_apply_confirm=true.
+
+- name: Apply in {{ ios_apply_mode }} mode
+  ansible.builtin.include_tasks:
+    file: "apply_{{ ios_apply_mode }}.yml"
+    apply: {tags: [always]}

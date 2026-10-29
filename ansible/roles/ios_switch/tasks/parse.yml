@@ -1,0 +1,62 @@
+---
+# Offline parse of the saved running config (state parsed): same parsers as
+# gathered, fed with text. Sets ios_raw_resources.
+- name: Parse resources offline
+  # Parsing never needs the device: any connection attempt goes to 127.0.0.1
+  # and fails instead of reaching the switch.
+  vars:
+    ansible_host: 127.0.0.1
+    ios_saved_config: "{{ ios_running_config.stdout[0] }}"
+  block:
+    - name: Parse hostname
+      cisco.ios.ios_hostname: {state: parsed, running_config: "{{ ios_saved_config }}"}
+      register: p_hostname
+      when: "'hostname' in ios_parse_resources"
+
+    - name: Parse interfaces
+      cisco.ios.ios_interfaces: {state: parsed, running_config: "{{ ios_saved_config }}"}
+      register: p_interfaces
+      when: "'interfaces' in ios_parse_resources"
+
+    - name: Parse L2 interfaces
+      cisco.ios.ios_l2_interfaces: {state: parsed, running_config: "{{ ios_saved_config }}"}
+      register: p_l2_interfaces
+      when: "'l2_interfaces' in ios_parse_resources"
+
+    - name: Parse L3 interfaces
+      cisco.ios.ios_l3_interfaces: {state: parsed, running_config: "{{ ios_saved_config }}"}
+      register: p_l3_interfaces
+      when: "'l3_interfaces' in ios_parse_resources"
+
+    - name: Parse port-channels
+      cisco.ios.ios_lag_interfaces: {state: parsed, running_config: "{{ ios_saved_config }}"}
+      register: p_lag_interfaces
+      when: "'lag_interfaces' in ios_parse_resources"
+
+    - name: Parse ACLs
+      cisco.ios.ios_acls: {state: parsed, running_config: "{{ ios_saved_config }}"}
+      register: p_acls
+      when: "'acls' in ios_parse_resources"
+
+    - name: Parse ACLs bound to interfaces
+      cisco.ios.ios_acl_interfaces: {state: parsed, running_config: "{{ ios_saved_config }}"}
+      register: p_acl_interfaces
+      when: "'acl_interfaces' in ios_parse_resources"
+
+    - name: Parse static routes
+      cisco.ios.ios_static_routes: {state: parsed, running_config: "{{ ios_saved_config }}"}
+      register: p_static_routes
+      when: "'static_routes' in ios_parse_resources"
+
+    - name: Assemble parsed resources (VLANs read from the config text)
+      ansible.builtin.set_fact:
+        ios_raw_resources:
+          hostname: "{{ p_hostname.parsed | default(none) }}"
+          vlans: "{{ ios_saved_config | ios_vlans_from_config }}"
+          interfaces: "{{ p_interfaces.parsed | default(none) }}"
+          l2_interfaces: "{{ p_l2_interfaces.parsed | default(none) }}"
+          l3_interfaces: "{{ p_l3_interfaces.parsed | default(none) }}"
+          lag_interfaces: "{{ p_lag_interfaces.parsed | default(none) }}"
+          acls: "{{ p_acls.parsed | default(none) }}"
+          acl_interfaces: "{{ p_acl_interfaces.parsed | default(none) }}"
+          static_routes: "{{ p_static_routes.parsed | default(none) }}"

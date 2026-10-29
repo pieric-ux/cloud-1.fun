@@ -1,0 +1,63 @@
+---
+# Old IOS (no "| section"): resource modules read the live config before
+# diffing, so commands are rendered offline from the same YAML and pushed with
+# ios_config, which only needs "show running-config".
+# Limit: ios_config sends what is missing, it does not remove what is extra.
+- name: Render commands offline from the YAML
+  # Rendering never needs the device: any connection attempt goes to
+  # 127.0.0.1 and fails instead of reaching the switch.
+  vars:
+    ansible_host: 127.0.0.1
+  block:
+    - name: Render interfaces
+      cisco.ios.ios_interfaces: {config: "{{ ios_resources.interfaces }}", state: rendered}
+      register: r_interfaces
+      when: ios_resources.interfaces is defined
+
+    - name: Render port-channels
+      cisco.ios.ios_lag_interfaces: {config: "{{ ios_resources.lag_interfaces }}", state: rendered}
+      register: r_lag
+      when: ios_resources.lag_interfaces is defined
+
+    - name: Render L2 interfaces
+      cisco.ios.ios_l2_interfaces: {config: "{{ ios_resources.l2_interfaces }}", state: rendered}
+      register: r_l2
+      when: ios_resources.l2_interfaces is defined
+
+    - name: Render L3 interfaces
+      cisco.ios.ios_l3_interfaces: {config: "{{ ios_resources.l3_interfaces }}", state: rendered}
+      register: r_l3
+      when: ios_resources.l3_interfaces is defined
+
+    - name: Render ACLs
+      cisco.ios.ios_acls: {config: "{{ ios_resources.acls }}", state: rendered}
+      register: r_acls
+      when: ios_resources.acls is defined
+
+    - name: Render ACLs bound to interfaces
+      cisco.ios.ios_acl_interfaces: {config: "{{ ios_resources.acl_interfaces }}", state: rendered}
+      register: r_acl_if
+      when: ios_resources.acl_interfaces is defined
+
+    - name: Render static routes
+      cisco.ios.ios_static_routes: {config: "{{ ios_resources.static_routes }}", state: rendered}
+      register: r_routes
+      when: ios_resources.static_routes is defined
+
+    # ios_vlans tries to reach the device even when rendering: VLANs are
+    # written by the template directly.
+    - name: Build the candidate config (top-level blocks, indented children)
+      ansible.builtin.set_fact:
+        ios_candidate_lines: "{{ lookup('ansible.builtin.template', 'ios_candidate.j2') | split('\n') | select | list }}"
+
+- name: Save the candidate config for review
+  ansible.builtin.copy:
+    content: "{{ ios_candidate_lines | join('\n') }}\n"
+    dest: "{{ ios_snapshot_dir }}/candidate.cfg"
+    mode: "0600"
+  delegate_to: localhost
+  check_mode: false
+
+- name: Push the candidate config (only missing lines are sent)
+  cisco.ios.ios_config:
+    src: "{{ ios_snapshot_dir }}/candidate.cfg"

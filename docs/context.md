@@ -111,11 +111,9 @@ cloud-1-iac/
 │   ├── ansible.cfg             # repris tel quel d'infra04 (+ vault_password_file)
 │   ├── requirements.yml        # collections : community.general, cisco.ios, pfsensible.core
 │   ├── site.yml                # point d'entrée : import_playbook 00 → 10 → 30
-│   ├── 00-bootstrap.yml        # Redfish/iLO → install Proxmox (connection: local)
-│   ├── 10-network.yml
+│   ├── 00-bootstrap.yml        # appels du rôle redfish_bootstrap (connection: local)
+│   ├── 10-network.yml          # appels des rôles ios_switch et pfsense
 │   ├── 30-config.yml           # ex-contenu de site.yml (rôles sur vms:!lxc)
-│   ├── templates/
-│   │   └── answer.toml.j2      # answer auto-install Proxmox, rendu par hôte
 │   ├── inventory/
 │   │   ├── zones/              # axe « où » : zones réseau
 │   │   │   └── mgmt.yml / dmz.yml / prod.yml   # repris d'infra04 (ansible_host ici)
@@ -134,9 +132,14 @@ cloud-1-iac/
 │   │   │   └── automation.yml, cyber.yml, dns.yml, …   # inchangés
 │   │   └── host_vars/
 │   │       ├── pve01.yml / pve02.yml   # iLO + pve_install_* propres à l'hôte
-│   │       └── l2sw.yml / l3sw.yml     # mdp (→ vault), particularités IOS
-│   └── roles/                  # common, users, ssh-hardening, cis-hardening
-├── 00-bootstrap/               # hors Ansible : iso/ (gitignoré), answer.toml, build ISO
+│   │       └── l2sw/ / l3sw/   # vars.yml (mdp → vault, particularités IOS)
+│   │                           # + ios_resources.yml (config du switch as code)
+│   └── roles/
+│       ├── redfish_bootstrap/  # couche 00 : probe, media_test, build_iso, install ; ilo4/
+│       ├── ios_switch/         # couche 10 : snapshot, parse, apply (resources | rendered)
+│       ├── pfsense/            # couche 10 : snapshot (config.xml)
+│       └── common, users, ssh-hardening, cis-hardening   # couche 30 (infra04)
+├── 00-bootstrap/               # hors Ansible : Dockerfile, iso/ et build/ (gitignorés)
 ├── 20-proxmox/                 # Terraform bpg/proxmox
 ├── build/                      # gitignoré : snapshots réseau (build/network/<hôte>/)
 ├── key/                        # gitignoré : clé SSH automation (ansible, ansible.pub)
@@ -153,6 +156,36 @@ chemins relatifs (rôles, inventaire) cassent selon le dossier de lancement.
 - **Playbooks à la racine d'`ansible/`** (pas de sous-dossier `playbooks/`) :
   à côté de `roles/`, ils trouvent les rôles sans config ; 4 playbooks ne
   justifient pas un dossier.
+- **Playbooks = aiguillages, toute la logique dans des rôles** (refactor du
+  2026-10-29). Rôles créés avec `ansible-galaxy role init` (cohérent avec les
+  rôles d'infra04), README réel par rôle, `tasks/main.yml` = l'action sans
+  danger (lecture seule). Une action par fichier de tâches, appelée par
+  `import_role` + `tasks_from` + tag. **`roles:` au niveau du play ignore
+  `tasks_from`** (testé : il lance `main.yml`) → `import_role` est la façon
+  documentée d'appeler un point d'entrée précis. **Même syntaxe partout** :
+  `30-config.yml` (ex-`site.yml` d'infra04, en `roles:`) converti aussi en
+  `import_role` (comportement identique : statique, tags et handlers
+  importés ; `--list-tasks` identique avant/après, 25 tâches). Tâches incluses
+  dynamiquement : `include_tasks` + `apply: {tags: [always]}`, sinon elles
+  sont filtrées par `--tags`.
+  - `redfish_bootstrap` : `probe`, `media_test`, `build_iso`, `install` ;
+    appels propres au BMC dans `tasks/<redfish_vendor>/` (`ilo4/` :
+    media_state, media_insert, media_eject, boot_once), réutilisés par
+    media_test et install (plus de duplication). iLO 5 = un dossier de plus.
+    Templates `answer.toml.j2` et `first-boot.sh.j2` dans le rôle.
+    `module_defaults` (identifiants iLO pour `uri`) dans le playbook.
+  - `ios_switch` : `snapshot` (écrit aussi `ios_resources.yml` *proposé*
+    dans `build/` → diff avec les host_vars pour voir une modif faite à la
+    main), `parse` (hors ligne, cible 127.0.0.1), `apply` →
+    `apply_resources` | `apply_rendered`. Transformation brut → host_vars =
+    filtre versionné `filter_plugins/ios_resources.py`
+    (`ios_resources_prune`, `ios_vlans_from_config`) : reproduit à
+    l'identique les host_vars commités (vérifié).
+  - `pfsense` : `snapshot` (config.xml) ; pfsensible.core ensuite.
+  - Validation du refactor : local (filtre identique, garde-fou install,
+    build-iso inchangé à l'octet, candidat l3sw identique) puis prod en
+    lecture seule (snapshots = host_vars, `apply --check` = 0 changement
+    sur les 2 switchs, probe iLO pve01 + pve02).
 - **`site.yml` = point d'entrée** (convention Ansible) : uniquement des
   `import_playbook`. Chaque couche reste lançable seule. 00 et 10 sont
   commentés tant qu'ils sont vides (un import de playbook vide échoue).
@@ -314,7 +347,7 @@ réponses capable de traiter un POST).
   `10.1.240.1`) ; `vmbr0.20` (`10.1.20.1x/24`) ; `bond1` = nic4-7 LACP MTU
   9000, `10.1.230.1`/`.2` /30 (lien direct pve01↔pve02).
 
-**`answer.toml`** = template `ansible/templates/answer.toml.j2` (clés 9.x),
+**`answer.toml`** = template `roles/redfish_bootstrap/templates/answer.toml.j2` (clés 9.x),
 valeurs communes dans `group_vars/baremetal/vars.yml`, propres à l'hôte dans
 `host_vars/`. Rendu validé (TOML OK) pour les 2 hôtes.
 - Disque : `filter.ID_SERIAL` = ID exact du volume logique de chaque hôte.
@@ -334,7 +367,7 @@ valeurs communes dans `group_vars/baremetal/vars.yml`, propres à l'hôte dans
   (pas secret, dans `host_vars`) → answer identique d'un run à l'autre
   (vérifié : même empreinte sur 2 rendus). passlib ajoute `rounds=656000`.
 
-**Hook first-boot** (`ansible/templates/first-boot.sh.j2`, `ordering =
+**Hook first-boot** (`roles/redfish_bootstrap/templates/first-boot.sh.j2`, `ordering =
 "before-network"`) : écrit le vrai `/etc/network/interfaces` (bond0 LACP →
 vmbr0 VLAN-aware, vmbr0.240 mgmt, vmbr0.20 storage, bond1 MTU 9000). NICs
 retrouvées par **MAC permanente** (`pve_net_bond0_macs` / `_bond1_macs` en
@@ -502,7 +535,7 @@ le vault) pour savoir reconstruire, puis `pfsensible.core` objet par objet
      `no ip redirects` (code `handle_defaults` du module).
    - l3sw (mode `rendered`) : **zéro changement au `--check` (2026-10-29)**.
      Le timeout venait du candidat écrit avec des `\n` littéraux (une seule
-     ligne) → construction déplacée dans `templates/ios_candidate.j2`
+     ligne) → construction déplacée dans `roles/ios_switch/templates/ios_candidate.j2`
      (liste de lignes), écrite dans `build/network/l3sw/candidate.cfg`
      (`src` d'`ios_config` attend un chemin). Normalisation à l'affichage
      IOS 12.2 : `no shutdown` retiré, `deny` + 3 espaces, pas de `host` en
@@ -513,6 +546,12 @@ le vault) pour savoir reconstruire, puis `pfsensible.core` objet par objet
    - Historique réécrit (messages détaillés, sans attribution) ; ancienne
      version dans la branche `backup-before-reword` (à supprimer).
    - Serveur `npx` arrêté.
+   - 2026-10-29 : couches 00 et 10 refactorées en rôles (`redfish_bootstrap`,
+     `ios_switch`, `pfsense`), validées en local puis en lecture seule sur
+     la prod (voir « Playbooks = aiguillages »). Le probe iLO de pve02 a
+     renvoyé 401 (`NoValidSession`) : le mot de passe d'`admin_yuumi` dans
+     le vault ne correspondait plus à l'iLO ; `vault.yml` (baremetal) mis à
+     jour par pieric, probe OK ensuite.
    - À faire ensuite : pfSense (SSH), durcissement
      (`no vstack` explicite, vty `access-class`, `no ip http server`).
 1. Lire ce `context.md`.
