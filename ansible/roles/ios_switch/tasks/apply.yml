@@ -8,7 +8,7 @@
       Real change on {{ inventory_hostname }}: preview with --check --diff,
       then re-run with -e network_apply_confirm=true.
 
-- name: Apply in {{ ios_apply_mode }} mode
+- name: Apply mode {{ ios_apply_mode }}
   ansible.builtin.include_tasks:
     file: "apply_{{ ios_apply_mode }}.yml"
     apply: {tags: [always]}
@@ -17,4 +17,3 @@
   ansible.builtin.include_tasks:
     file: apply_global.yml
     apply: {tags: [always]}
-

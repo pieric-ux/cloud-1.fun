@@ -41,7 +41,7 @@
   become: false
 
   tasks:
-    - name: pfSense access
+    - name: Access to pfSense
       ansible.builtin.import_role:
         name: preflight
         tasks_from: firewall

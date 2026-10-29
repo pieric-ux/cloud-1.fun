@@ -1,3 +1,4 @@
+---
 galaxy_info:
   author: pieric
   description: Bare-metal Proxmox install through the BMC (Redfish), from an auto-install ISO

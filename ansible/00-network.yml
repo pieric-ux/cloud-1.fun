@@ -41,7 +41,7 @@
         name: ios_switch
         tasks_from: apply
 
-- name: pfSense configuration
+- name: Configuration of pfSense
   hosts: firewall
   gather_facts: false
   become: false

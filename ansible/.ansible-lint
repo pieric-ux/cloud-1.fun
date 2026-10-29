@@ -1,0 +1,13 @@
+---
+# ansible-lint configuration (run from ansible/: ansible-lint --offline).
+skip_list:
+  # Variables are named by domain (pve_install_*, ilo_*, ios_*, pfsense_*) and
+  # shared between the inventory and the roles on purpose; prefixing them with
+  # the role name would split one setting into several names.
+  - var-naming[no-role-prefix]
+  # ssh-hardening / cis-hardening come from infra04 with a dash and are used
+  # by the group as is: renaming them would break their playbooks.
+  - role-name
+
+exclude_paths:
+  - .cache/

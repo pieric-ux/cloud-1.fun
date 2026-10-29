@@ -1,4 +1,4 @@
-#SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: MIT-0
 ---
 # handlers file for ssh-hardening
 # The full configuration (sshd_config + every drop-in) is checked before the reload:

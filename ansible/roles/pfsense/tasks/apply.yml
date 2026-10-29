@@ -58,35 +58,35 @@
 # Certificates before what uses them: CA, then certificates, then the users
 # and the OpenVPN server referring to them. Secrets come from the vault.
 - name: Certificate authorities
-  pfsensible.core.pfsense_ca: "{{ item }}"
+  pfsensible.core.pfsense_ca: "{{ item }}"  # noqa: args[module]
   loop: "{{ pfsense_resources.cas }}"
   loop_control:
     label: "{{ item.name }}"
   no_log: "{{ pfsense_hide_secrets | bool }}"
 
 - name: Certificates
-  pfsensible.core.pfsense_cert: "{{ item }}"
+  pfsensible.core.pfsense_cert: "{{ item }}"  # noqa: args[module]
   loop: "{{ pfsense_resources.certs }}"
   loop_control:
     label: "{{ item.name }}"
   no_log: "{{ pfsense_hide_secrets | bool }}"
 
 - name: Users
-  pfsensible.core.pfsense_user: "{{ item }}"
+  pfsensible.core.pfsense_user: "{{ item }}"  # noqa: args[module]
   loop: "{{ pfsense_resources.users }}"
   loop_control:
     label: "{{ item.name }}"
   no_log: "{{ pfsense_hide_secrets | bool }}"
 
 - name: OpenVPN servers
-  pfsensible.core.pfsense_openvpn_server: "{{ item }}"
+  pfsensible.core.pfsense_openvpn_server: "{{ item }}"  # noqa: args[module]
   loop: "{{ pfsense_resources.openvpn_servers }}"
   loop_control:
     label: "{{ item.name }}"
   no_log: "{{ pfsense_hide_secrets | bool }}"
 
 - name: Gateways
-  pfsensible.core.pfsense_gateway: "{{ item }}"
+  pfsensible.core.pfsense_gateway: "{{ item }}"  # noqa: args[module]
   loop: "{{ pfsense_resources.gateways }}"
   loop_control:
     label: "{{ item.name }}"
@@ -98,19 +98,19 @@
   when: pfsense_resources.default_gateway | length > 0
 
 - name: Static routes
-  pfsensible.core.pfsense_route: "{{ item }}"
+  pfsensible.core.pfsense_route: "{{ item }}"  # noqa: args[module]
   loop: "{{ pfsense_resources.routes }}"
   loop_control:
     label: "{{ item.network }} via {{ item.gateway }}"
 
 - name: System settings (only the values below are managed)
-  pfsensible.core.pfsense_setup: "{{ pfsense_resources.setup }}"
+  pfsensible.core.pfsense_setup: "{{ pfsense_resources.setup }}"  # noqa: args[module]
 
 - name: DNS resolver (Unbound)
-  pfsensible.core.pfsense_dns_resolver: "{{ pfsense_resources.dns_resolver }}"
+  pfsensible.core.pfsense_dns_resolver: "{{ pfsense_resources.dns_resolver }}"  # noqa: args[module]
 
 - name: DHCP servers
-  pfsensible.core.pfsense_dhcp_server: "{{ item }}"
+  pfsensible.core.pfsense_dhcp_server: "{{ item }}"  # noqa: args[module]
   loop: "{{ pfsense_resources.dhcp_servers }}"
   loop_control:
     label: "{{ item.interface }}"

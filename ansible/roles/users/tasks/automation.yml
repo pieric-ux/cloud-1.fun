@@ -1,4 +1,4 @@
-#SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: MIT-0
 ---
 # tasks file for the automation account
 # An empty list with exclusive: true would remove every key, Ansible included.

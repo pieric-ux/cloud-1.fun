@@ -4,6 +4,9 @@
 # Each layer can still be run on its own (ansible-playbook 30-config.yml).
 # 00 and 10 stay commented for now (decision pending, see docs/context.md).
 
-# - import_playbook: 00-network.yml
-# - import_playbook: 10-bootstrap.yml
-- import_playbook: 30-config.yml
+# - name: Layer 00, network
+#   ansible.builtin.import_playbook: 00-network.yml
+# - name: Layer 10, bare metal
+#   ansible.builtin.import_playbook: 10-bootstrap.yml
+- name: Layer 30, OS configuration of the VMs
+  ansible.builtin.import_playbook: 30-config.yml

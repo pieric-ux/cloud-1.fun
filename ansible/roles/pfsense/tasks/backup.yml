@@ -36,6 +36,8 @@
     cmd: >-
       ansible-vault encrypt {{ pfsense_snapshot_dir }}/config.xml
       --output {{ pfsense_config_vault }}
+  # Runs only when needed (see when): every run is a real change.
+  changed_when: true
   when: pfsense_old.stdout != pfsense_new.stdout
   delegate_to: localhost
 

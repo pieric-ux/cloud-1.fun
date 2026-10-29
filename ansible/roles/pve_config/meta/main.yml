@@ -1,3 +1,4 @@
+---
 galaxy_info:
   author: pieric
   description: Proxmox VE node configuration after an install (repos, time, iSCSI, storage, cluster)

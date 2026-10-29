@@ -1,4 +1,4 @@
-#SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: MIT-0
 ---
 # defaults file for cis-hardening
 # yes/no values are quoted: unquoted they become YAML booleans and render as True/False.

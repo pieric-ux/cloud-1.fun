@@ -56,6 +56,8 @@
       --on-first-boot /work/first-boot.sh
       --tmp /work
       --output /work/{{ pve_iso_output }}
+  # Runs only when needed (see when): every run is a real change.
+  changed_when: true
   when: answer_file.changed or first_boot_file.changed or not iso_stat.stat.exists
 
 # prepare-iso exits 0 even on failure: check the ISO was really written.

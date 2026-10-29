@@ -675,6 +675,18 @@ blocs `import` (`imports.tf.example`, VMIDs du module 01) + `terraform plan
 `hashicorp/terraform:1.9.8` (`make vms-init` / `make vms-plan`). Token API
 `terraform@pve!iac` à créer (Datacenter > Permissions > API Tokens).
 
+### Qualité — ansible-lint (2026-10-29)
+`ansible-lint` 26.10 (pipx, environnement séparé ; collections du venv
+Ansible via `ANSIBLE_COLLECTIONS_PATH`) : 268 remarques → **0, profil
+`production`**. Corrigé : `changed_when` sur les commandes qui modifient,
+noms de tâches/plays, `---`, métadonnées génériques des rôles d'infra04,
+`# SPDX`, tests galaxy. `# noqa: args[module]` sur les tâches pfSense en
+`"{{ item }}"` (lint ne lit pas les paramètres templatés ; validés en réel
+par les `--check`). Écartés **avec justification** dans `.ansible-lint` :
+`var-naming[no-role-prefix]` (variables par domaine partagées inventaire /
+rôles), `role-name` (rôles à tiret d'infra04). `.yamllint` : séquences
+indentées ou non (fichiers générés), vaults ignorés (chiffrés). `make lint`.
+
 ### ⚠️ Avant le test de réinstallation (lu le 2026-10-29)
 - **La VM `pbs` (2400) et son datastore sont sur le `local-lvm` de pve02**
   (disques `vm-2400-disk-0/1`), donc sur le RAID que l'install efface.

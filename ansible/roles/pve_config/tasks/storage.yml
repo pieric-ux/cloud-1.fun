@@ -10,6 +10,8 @@
 
 - name: Define missing storages
   ansible.builtin.command: "pvesm add {{ item.type }} {{ item.name }} {{ item.options }}"
+  # Runs only when needed (see when): every run is a real change.
+  changed_when: true
   loop: "{{ pve_storages }}"
   loop_control:
     label: "{{ item.name }}"

@@ -24,7 +24,7 @@ define need_host
 endef
 
 .DEFAULT_GOAL := help
-.PHONY: help preflight \
+.PHONY: help preflight lint \
 	network network-check network-apply pfsense-backup \
 	bootstrap iso media-test serve-iso install pve-config-check \
 	vms-init vms-plan \
@@ -32,6 +32,14 @@ endef
 
 help: ## List the targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
+
+# ansible-lint has its own ansible-core: point it to the collections of the
+# Ansible install too (site-packages of the Python ansible runs with).
+ANSIBLE_PYTHON := $(shell sed -n '1s/^\#!//p' $$(command -v ansible) 2>/dev/null)
+ANSIBLE_SITE   := $(shell $(ANSIBLE_PYTHON) -c 'import site; print(site.getsitepackages()[0])' 2>/dev/null)
+
+lint: ## Lint the Ansible code (ansible-lint, profile production)
+	cd $(ANSIBLE_DIR) && ANSIBLE_COLLECTIONS_PATH=$$HOME/.ansible/collections:$(ANSIBLE_SITE) ansible-lint --offline
 
 # --- Before a rebuild -------------------------------------------------------
 

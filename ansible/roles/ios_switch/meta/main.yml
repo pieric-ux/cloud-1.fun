@@ -1,3 +1,4 @@
+---
 galaxy_info:
   author: pieric
   description: Cisco IOS switch configuration as code (snapshot, offline parse, apply)

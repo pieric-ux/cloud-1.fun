@@ -73,6 +73,8 @@ Les playbooks ne contiennent aucune logique : un appel de rôle par action
 - **Clé SSH automation** dans `key/` (gitignoré) : `key/ansible`, droits `600`.
 - **Node.js / npx** : sert l'ISO aux iLO (`npx http-server`, requêtes HTTP Range
   obligatoires — `python3 -m http.server` ne convient pas).
+- **ansible-lint** (`pipx install ansible-lint`) pour `make lint` ; sa config
+  (`ansible/.ansible-lint`, `ansible/.yamllint`) justifie chaque règle écartée.
 - **Docker** : conteneur Debian pour `proxmox-auto-install-assistant`
   (paquet Debian, ne tourne pas sur macOS).
 - Le laptop doit être joignable par les iLO (réseau mgmt `10.1.240.0/24`).
@@ -97,6 +99,7 @@ Le plus simple : le `Makefile`, une cible par étape dans l'ordre du rebuild
 en plus de la confirmation propre à chaque playbook :
 
 ```bash
+make lint                              # ansible-lint (profil production)
 make preflight                         # point zéro prêt ? (lecture seule)
 make network                           # snapshot réseau (lecture seule)
 make network-check                     # aperçu de la config réseau as code

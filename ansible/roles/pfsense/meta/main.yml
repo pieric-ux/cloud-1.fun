@@ -1,3 +1,4 @@
+---
 galaxy_info:
   author: pieric
   description: pfSense configuration (snapshot today, config as code with pfsensible.core next)

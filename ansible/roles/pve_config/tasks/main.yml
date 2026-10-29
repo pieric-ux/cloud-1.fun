@@ -16,5 +16,5 @@
 - name: Name resolution and time
   ansible.builtin.import_tasks: system.yml
 
-- name: iSCSI initiator and multipath
+- name: Initiator and multipath for iSCSI
   ansible.builtin.import_tasks: iscsi.yml

@@ -1,5 +1,6 @@
-# Network devices (layer 10). Exception to the zones/ rule: these devices
+# Network devices (layer 00). Exception to the zones/ rule: these devices
 # carry the zones instead of living in one, so ansible_host is defined here.
+---
 all:
   children:
     network:

@@ -2,13 +2,13 @@
 # Runbook steps 5 to 7 (bare-metal hosts, from the controller): iLO, RAID, ISO.
 - name: Check BMC, RAID, ISO
   block:
-    - name: iLO HTTPS port open
+    - name: HTTPS port of the iLO open
       ansible.builtin.wait_for:
         host: "{{ ilo_host }}"
         port: 443
         timeout: "{{ preflight_timeout }}"
 
-    - name: iLO credentials accepted (read-only Redfish GET)
+    - name: Credentials accepted by the iLO (read-only Redfish GET)
       ansible.builtin.uri:
         url: "https://{{ ilo_host }}/redfish/v1/Systems/1/"
         user: "{{ ilo_user }}"
