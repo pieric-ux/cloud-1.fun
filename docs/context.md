@@ -482,6 +482,18 @@ dans git, diff, gère aussi pfSense). Les sauvegardes contiennent des secrets
 **pfSense** : commencer par la **restauration du `config.xml`** (chiffré par
 le vault) pour savoir reconstruire, puis `pfsensible.core` objet par objet
 (alias, règles, NAT ; OpenVPN en dernier).
+- **Accès SSH débloqué (2026-10-29)** : SSH en *Public Key Only* →
+  `key/ansible.pub` ajoutée aux *Authorized SSH Keys* d'`admin` (la clé de
+  benedict a été retirée à cette occasion : à confirmer avec lui).
+  `group_vars/firewall` en `ansible_ssh_private_key_file` (le mot de passe
+  du vault ne sert plus qu'à l'interface web). Python `/usr/local/bin/python3.11` OK.
+- Le timeout venait du chemin réseau : depuis le VPN (laptop sur partage de
+  connexion, `10.100.0.2`), `10.1.255.0/30` n'était pas poussé → ajout de
+  `10.1.255.2/32` dans *IPv4 Local network(s)* du serveur OpenVPN.
+  `ansible_host: 10.1.255.2` (adresse d'infra stable, indépendante
+  d'OpenVPN) marche sur place et à distance.
+- Snapshot OK : `config.xml` version 24.6, 22 règles, alias, NAT, DHCP,
+  Unbound, OpenVPN.
 
 ## Où on en est / prochaine étape
 

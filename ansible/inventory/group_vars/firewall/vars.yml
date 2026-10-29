@@ -2,6 +2,8 @@
 # pfSense CE 2.7.2 (FreeBSD): pfsensible.core runs over SSH with the Python
 # shipped by pfSense. The admin account is root-equivalent: no sudo.
 ansible_user: admin
-ansible_password: "{{ vault_pfsense_admin_password }}"
+# SSH is "Public Key Only" on pfSense: the automation key is in the admin
+# user's Authorized SSH Keys. vault_pfsense_admin_password stays for the web UI.
+ansible_ssh_private_key_file: "{{ playbook_dir }}/../key/ansible"
 ansible_become: false
 ansible_python_interpreter: /usr/local/bin/python3.11
