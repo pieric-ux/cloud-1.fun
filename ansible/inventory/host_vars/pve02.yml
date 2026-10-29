@@ -29,3 +29,7 @@ pve_raid:
   level: "1"
   stripe_kib: 256
   drives: [1I:3:1, 1I:3:2]
+
+# iSCSI initiator name allowed on the NAS target (masking): a reinstalled node
+# must get it back, a new IQN would be refused.
+pve_iscsi_initiator_name: iqn.1993-08.org.debian:01:71b758bf9777

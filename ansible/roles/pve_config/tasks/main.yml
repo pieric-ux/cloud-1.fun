@@ -1,0 +1,20 @@
+---
+# DRAFT, NOT VALIDATED: written from the piscine module 03 docs, never run.
+# Read the live config first (docs/context.md, "relevé des Proxmox"), then
+# preview with --check --diff. Cluster join and storage are cluster-wide
+# operations: see cluster.yml and storage.yml.
+- name: Refuse a real run without explicit confirmation
+  ansible.builtin.assert:
+    that: ansible_check_mode or (pve_config_confirm | bool)
+    fail_msg: >-
+      Real change on {{ inventory_hostname }}: preview with --check --diff,
+      then re-run with -e pve_config_confirm=true.
+
+- name: Package repositories
+  ansible.builtin.import_tasks: repos.yml
+
+- name: Name resolution and time
+  ansible.builtin.import_tasks: system.yml
+
+- name: iSCSI initiator and multipath
+  ansible.builtin.import_tasks: iscsi.yml

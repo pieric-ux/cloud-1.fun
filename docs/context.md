@@ -663,6 +663,17 @@ le vault) pour savoir reconstruire, puis `pfsensible.core` objet par objet
       --diff` à zéro, `no vstack`, durcissement, Oxidized (plus tard).
 - [ ] Couches 20 → 30, puis Makefile.
 
+### ⚠️ Avant le test de réinstallation (lu le 2026-10-29)
+- **La VM `pbs` (2400) et son datastore sont sur le `local-lvm` de pve02**
+  (disques `vm-2400-disk-0/1`), donc sur le RAID que l'install **efface** :
+  réinstaller pve02 détruit PBS et les backups locaux (seule la copie
+  distante survit). Tester la réinstallation sur **pve01** après avoir
+  vérifié ce qu'il héberge en `local-lvm`, ou déplacer le pbs avant.
+- Après une réinstallation, le nœud doit **retrouver son IQN iSCSI** (le
+  masking du NAS refuse tout autre initiateur) et **rejoindre le cluster**
+  (`INFRA-CLUSTER`, qdevice `qdevice03` `10.1.240.13`) : rôle `pve_config`
+  (brouillon) + procédure manuelle de re-join dans `tasks/cluster.yml`.
+
 ### Reprise suggérée pour la nouvelle session
 0. **Pause du 2026-10-28 soir — où on s'est arrêté :**
    - l2sw : `--tags apply --check` = **zéro changement** (commité). Valeurs par
@@ -688,7 +699,13 @@ le vault) pour savoir reconstruire, puis `pfsensible.core` objet par objet
      renvoyé 401 (`NoValidSession`) : le mot de passe d'`admin_yuumi` dans
      le vault ne correspondait plus à l'iLO ; `vault.yml` (baremetal) mis à
      jour par pieric, probe OK ensuite.
-   - À faire ensuite : pfSense (SSH), durcissement
+   - **Rôle `pve_config` (brouillon, jamais lancé)** écrit d'après la doc
+     du module 03 : dépôts, /etc/hosts, NTP, IQN iSCSI enregistré, CHAP,
+     multipath, stockages cluster ; tag `never, pve-config` dans
+     `10-bootstrap.yml`. À valider après le relevé réel des nœuds (bloqué
+     en remote : commande root sur les hyperviseurs → à lancer par pieric).
+     Secret CHAP à mettre dans un vault.
+   - À faire ensuite : pfSense (SSH bloqué, sshguard ?), relevé des pve
      (`no vstack` explicite, vty `access-class`, `no ip http server`).
 1. Lire ce `context.md`.
 2. Couche 10 écrite de bout en bout ; seul reste le **test réel de l'install

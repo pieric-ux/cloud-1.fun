@@ -1,0 +1,17 @@
+---
+# Cluster-wide storage definitions (/etc/pve/storage.cfg is shared by the
+# cluster): run once, from a node already in the cluster. Created only when
+# missing; an existing definition is never modified here.
+- name: Read the defined storages
+  ansible.builtin.command: pvesm status
+  register: pve_storage_status
+  changed_when: false
+  run_once: true
+
+- name: Define missing storages
+  ansible.builtin.command: "pvesm add {{ item.type }} {{ item.name }} {{ item.options }}"
+  loop: "{{ pve_storages }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: item.name not in pve_storage_status.stdout
+  run_once: true

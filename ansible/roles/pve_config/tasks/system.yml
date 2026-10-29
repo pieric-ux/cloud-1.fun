@@ -1,0 +1,19 @@
+---
+# Both nodes resolve each other without DNS (dhcp-dns is a guest of the
+# cluster, absent during a rebuild).
+- name: Cluster nodes in /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^\S+\s+{{ hostvars[item].pve_fqdn | regex_escape }}\s'
+    line: "{{ hostvars[item].pve_install_mgmt_cidr.split('/')[0] }} {{ hostvars[item].pve_fqdn }} {{ item }}"
+  loop: "{{ groups['pve'] }}"
+
+- name: NTP source (pfSense only)
+  ansible.builtin.copy:
+    dest: /etc/chrony/sources.d/pfsense.sources
+    mode: "0644"
+    content: |
+      {% for server in pve_ntp_servers %}
+      server {{ server }} iburst
+      {% endfor %}
+  notify: Reload chrony sources

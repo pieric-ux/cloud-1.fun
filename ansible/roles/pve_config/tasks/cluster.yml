@@ -1,0 +1,18 @@
+---
+# NOT AUTOMATED YET, on purpose: joining or re-joining the cluster is
+# destructive for the cluster if done wrong. Manual procedure for a
+# reinstalled node (from docs/context.md), to turn into tasks once tested:
+#   on the surviving node:  pvecm delnode <node>   (old entry of the node)
+#                           rm -rf /etc/pve/nodes/<node>  (stale config)
+#   on the fresh node:      pvecm add <surviving node IP> --link0 <own mgmt IP>
+#   then:                   pvecm qdevice setup 10.1.240.13 (if removed)
+#   check:                  pvecm status (Quorate: Yes, 3 votes with qdevice)
+- name: Cluster membership (read-only)
+  ansible.builtin.command: pvecm status
+  register: pve_cluster_status
+  changed_when: false
+  failed_when: false
+
+- name: Show cluster state
+  ansible.builtin.debug:
+    msg: "{{ pve_cluster_status.stdout_lines | select('search', 'Name:|Quorate|Nodes:') | list }}"

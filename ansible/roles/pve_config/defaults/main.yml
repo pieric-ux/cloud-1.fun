@@ -1,0 +1,9 @@
+---
+# Package repositories: no subscription key, enterprise and ceph disabled.
+pve_repo_suite: trixie
+pve_repo_component: pve-no-subscription
+# Time: pfSense is the only NTP source of the rack.
+pve_ntp_servers: [10.1.255.2]
+
+# A real run (no --check) is refused unless set to true on the command line.
+pve_config_confirm: false

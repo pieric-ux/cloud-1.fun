@@ -1,0 +1,50 @@
+---
+# The NAS target only accepts known initiator IQNs (masking, default: no
+# access): a reinstalled node must get its recorded IQN back, otherwise its
+# login is refused even with the right CHAP secret.
+- name: Initiator name (recorded IQN, allowed on the NAS target)
+  ansible.builtin.copy:
+    dest: /etc/iscsi/initiatorname.iscsi
+    mode: "0600"
+    content: "InitiatorName={{ pve_iscsi_initiator_name }}\n"
+  notify: Restart iscsid
+
+# CHAP lives in iscsid.conf: the Proxmox storage has no CHAP field.
+- name: CHAP and session settings
+  ansible.builtin.lineinfile:
+    path: /etc/iscsi/iscsid.conf
+    regexp: '^#?\s*{{ item.key | regex_escape }}\s*='
+    line: "{{ item.key }} = {{ item.value }}"
+  loop:
+    - {key: node.session.auth.authmethod, value: CHAP}
+    - {key: node.session.auth.username, value: "{{ pve_iscsi_chap_user }}"}
+    - {key: node.session.auth.password, value: "{{ pve_iscsi_chap_password }}"}
+    - {key: node.session.timeo.replacement_timeout, value: "15"}
+  loop_control:
+    label: "{{ item.key }}"
+  no_log: true
+  notify: Restart iscsid
+
+- name: Multipath (two NAS portals, one device with a stable alias)
+  ansible.builtin.copy:
+    dest: /etc/multipath.conf
+    mode: "0644"
+    content: |
+      defaults {
+          find_multipaths "strict"
+      }
+      multipaths {
+          multipath {
+              wwid "{{ pve_iscsi_lun_wwid }}"
+              alias {{ pve_iscsi_multipath_alias }}
+          }
+      }
+  notify: Reload multipathd
+
+- name: LUN in the multipath wwids file
+  ansible.builtin.lineinfile:
+    path: /etc/multipath/wwids
+    line: "/{{ pve_iscsi_lun_wwid }}/"
+    create: true
+    mode: "0644"
+  notify: Reload multipathd
