@@ -47,7 +47,7 @@ cloud-1-iac/
 ├── build/                # gitignoré : snapshots réseau
 ├── key/                  # gitignoré : clé SSH automation
 ├── docs/
-└── Makefile
+└── Makefile          # une cible par étape, dans l'ordre (make help)
 ```
 
 Les playbooks ne contiennent aucune logique : un appel de rôle par action
@@ -92,7 +92,23 @@ RAID P440, ISO, puis l'enchaînement automatisé.
 
 ## Utilisation
 
-Toutes les commandes Ansible se lancent depuis `ansible/`.
+Le plus simple : le `Makefile`, une cible par étape dans l'ordre du rebuild
+(`make help`). Les cibles qui modifient quelque chose demandent `CONFIRM=yes`,
+en plus de la confirmation propre à chaque playbook :
+
+```bash
+make preflight                         # point zéro prêt ? (lecture seule)
+make network                           # snapshot réseau (lecture seule)
+make network-check                     # aperçu de la config réseau as code
+make network-apply CONFIRM=yes         # applique switchs + pfSense
+make bootstrap                         # iLO + RAID (lecture seule)
+make iso                               # ISO auto-install par hôte
+make serve-iso                         # sert les ISO préparés pendant une install
+make install HOST=pve02 CONFIRM=yes    # RÉINSTALLE un nœud (efface le disque)
+make config CONFIRM=yes                # couche 30
+```
+
+Les mêmes actions en direct, depuis `ansible/` :
 
 ```bash
 # Avant un rebuild — vérifier le point zéro (lecture seule, verdict à la fin)

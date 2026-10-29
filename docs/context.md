@@ -696,6 +696,10 @@ le vault) pour savoir reconstruire, puis `pfsensible.core` objet par objet
    `10-bootstrap/build/` en npx, `--tags install --limit pveXX -e
    pve_install_confirm=true`. Points à observer : hook réseau appliqué,
    cluster/iSCSI à refaire après (couche suivante).
+- **Makefile (2026-10-29)** : une cible par étape dans l'ordre du rebuild
+  (`make help`) ; cibles qui modifient → `CONFIRM=yes` (+ `HOST=` par nœud),
+  en plus des confirmations des playbooks. Vérifié en simulation (`make -n`)
+  et garde-fous, rien lancé.
 3. Couche 00 : intégrer le parsing hors ligne du l3sw au repo (aujourd'hui
    dans un playbook temporaire), YAML → `host_vars/l2sw.yml` / `l3sw.yml`
    (VLAN gérés sur les **deux** switchs depuis le passage en transparent),
