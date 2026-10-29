@@ -4,3 +4,13 @@ pfsense_config_path: /cf/conf/config.xml
 
 # Snapshot output (gitignored: config.xml holds keys and password hashes).
 pfsense_snapshot_dir: "{{ playbook_dir }}/../build/network/{{ inventory_hostname }}"
+
+# Versioned backup, encrypted with ansible-vault: the rebuild path until the
+# configuration is modelled with pfsensible.core.
+pfsense_config_vault: "{{ playbook_dir }}/files/{{ inventory_hostname }}/config.xml.vault"
+
+# Restore overwrites the whole configuration and reboots pfSense (gateway and
+# VPN of the rack): refused unless set to true on the command line.
+pfsense_restore_confirm: false
+# pfSense back on SSH after the reboot.
+pfsense_restore_up_timeout: 600

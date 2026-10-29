@@ -494,6 +494,15 @@ le vault) pour savoir reconstruire, puis `pfsensible.core` objet par objet
   d'OpenVPN) marche sur place et à distance.
 - Snapshot OK : `config.xml` version 24.6, 22 règles, alias, NAT, DHCP,
   Unbound, OpenVPN.
+- **Chemin de rebuild (2026-10-29)** : `--tags pfsense-backup` → snapshot +
+  `config.xml` chiffré vault dans `ansible/files/pfsense/config.xml.vault`
+  (versionné). Chiffrement non déterministe → réécrit seulement si le SHA-256
+  de la snapshot diffère du backup déchiffré (2e lancement : « already up to
+  date »). Déchiffré = snapshot (vérifié). `--tags pfsense-restore` (play
+  `never` + `pfsense_restore_confirm`) : `copy` (déchiffre seul) →
+  `/cf/conf/config.xml`, suppression `/tmp/config.cache`, reboot — coupe
+  passerelle + VPN du rack. Install fraîche (pas de SSH) : clé USB avec
+  `/config/config.xml` chargée au boot → étape du point zéro.
 
 ## Où on en est / prochaine étape
 

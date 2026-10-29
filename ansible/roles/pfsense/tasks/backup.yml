@@ -1,0 +1,44 @@
+---
+# Snapshot, then store config.xml encrypted in the repo. Vault encryption is
+# not deterministic (random salt): the file is rewritten only when the
+# configuration itself changed, otherwise every run would show a git change.
+- name: Snapshot pfSense
+  ansible.builtin.import_tasks: snapshot.yml
+
+- name: Checksum of the fresh snapshot
+  ansible.builtin.stat:
+    path: "{{ pfsense_snapshot_dir }}/config.xml"
+    checksum_algorithm: sha256
+  register: pfsense_new
+  delegate_to: localhost
+
+- name: Checksum of the versioned backup (decrypted in memory)
+  ansible.builtin.shell:
+    cmd: set -o pipefail && ansible-vault view {{ pfsense_config_vault | quote }} | shasum -a 256 | cut -d' ' -f1
+    executable: /bin/bash
+  register: pfsense_old
+  changed_when: false
+  failed_when: false
+  delegate_to: localhost
+
+- name: Create the backup directory
+  ansible.builtin.file:
+    path: "{{ pfsense_config_vault | dirname }}"
+    state: directory
+    mode: "0755"
+  delegate_to: localhost
+
+- name: Encrypt the new configuration into the repo
+  ansible.builtin.command:
+    cmd: >-
+      ansible-vault encrypt {{ pfsense_snapshot_dir }}/config.xml
+      --output {{ pfsense_config_vault }}
+  when: pfsense_old.stdout != pfsense_new.stat.checksum
+  delegate_to: localhost
+
+- name: Backup status
+  ansible.builtin.debug:
+    msg: >-
+      {{ 'Backup updated: review and commit ' ~ pfsense_config_vault
+         if pfsense_old.stdout != pfsense_new.stat.checksum
+         else 'Backup already up to date' }}

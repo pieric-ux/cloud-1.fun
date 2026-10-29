@@ -1,0 +1,32 @@
+---
+# DESTRUCTIVE: overwrites the whole pfSense configuration with the versioned
+# backup and reboots. pfSense is the gateway and the VPN of the rack: every
+# routed flow and VPN session drops during the reboot.
+- name: Refuse to run without explicit confirmation
+  ansible.builtin.assert:
+    that: pfsense_restore_confirm | bool
+    fail_msg: >-
+      This overwrites the configuration of {{ inventory_hostname }} and reboots it.
+      Re-run with -e pfsense_restore_confirm=true once the group agrees.
+
+# copy decrypts a vault-encrypted source by itself.
+- name: Push the versioned configuration
+  ansible.builtin.copy:
+    src: "{{ pfsense_config_vault }}"
+    dest: "{{ pfsense_config_path }}"
+    owner: root
+    group: wheel
+    mode: "0644"
+    backup: true
+
+# pfSense caches the parsed configuration: drop the cache so the reboot reads
+# the restored file.
+- name: Drop the configuration cache
+  ansible.builtin.file:
+    path: /tmp/config.cache
+    state: absent
+
+- name: Reboot pfSense
+  ansible.builtin.reboot:
+    reboot_command: /etc/rc.reboot
+    reboot_timeout: "{{ pfsense_restore_up_timeout }}"

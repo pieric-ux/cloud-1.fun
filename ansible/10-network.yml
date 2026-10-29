@@ -7,7 +7,10 @@
 #                   ansible-playbook 10-network.yml --tags apply --check --diff --limit l2sw
 #                   a real run also needs -e network_apply_confirm=true
 # pfSense (role pfsense):
-#   default         read-only copy of config.xml -> build/network/pfsense/
+#   default                read-only copy of config.xml -> build/network/pfsense/
+#   --tags pfsense-backup  same, then store it vault-encrypted in files/pfsense/
+#   --tags pfsense-restore DESTRUCTIVE: push the backup and reboot,
+#                          needs -e pfsense_restore_confirm=true
 
 - name: Snapshot Cisco switches (read-only)
   hosts: switches
@@ -35,7 +38,7 @@
         name: ios_switch
         tasks_from: apply
 
-- name: Snapshot pfSense (read-only)
+- name: pfSense configuration
   hosts: firewall
   gather_facts: false
   become: false
@@ -45,3 +48,22 @@
       ansible.builtin.import_role:
         name: pfsense
         tasks_from: snapshot
+
+    - name: Store the configuration encrypted in the repo
+      ansible.builtin.import_role:
+        name: pfsense
+        tasks_from: backup
+      tags: [never, pfsense-backup]
+
+# DESTRUCTIVE: gateway and VPN of the rack reboot.
+- name: Restore the pfSense configuration (DESTRUCTIVE)
+  hosts: firewall
+  gather_facts: false
+  become: false
+  tags: [never, pfsense-restore]
+
+  tasks:
+    - name: Restore the versioned configuration and reboot
+      ansible.builtin.import_role:
+        name: pfsense
+        tasks_from: restore
