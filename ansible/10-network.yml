@@ -9,6 +9,9 @@
 # pfSense (role pfsense):
 #   default                read-only copy of config.xml -> build/network/pfsense/
 #   --tags pfsense-backup  same, then store it vault-encrypted in files/pfsense/
+#   --tags pfsense-apply   push host_vars/pfsense/pfsense_resources.yml (aliases,
+#                          rules); preview with --check --diff, real run needs
+#                          -e pfsense_apply_confirm=true
 #   --tags pfsense-restore DESTRUCTIVE: push the backup and reboot,
 #                          needs -e pfsense_restore_confirm=true
 
@@ -54,6 +57,12 @@
         name: pfsense
         tasks_from: backup
       tags: [never, pfsense-backup]
+
+    - name: Apply aliases and filter rules as code
+      ansible.builtin.import_role:
+        name: pfsense
+        tasks_from: apply
+      tags: [never, pfsense-apply]
 
 # DESTRUCTIVE: gateway and VPN of the rack reboot.
 - name: Restore the pfSense configuration (DESTRUCTIVE)

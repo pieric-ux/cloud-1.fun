@@ -7,15 +7,25 @@ with the Python shipped by pfSense.
 
 | File | What it does | Risk |
 |---|---|---|
-| `snapshot.yml` (default, `main.yml`) | copies `/cf/conf/config.xml` to `pfsense_snapshot_dir` (gitignored) | none |
+| `snapshot.yml` (default, `main.yml`) | copies `/cf/conf/config.xml` to `pfsense_snapshot_dir` (gitignored) and writes a `pfsense_resources.yml` proposal to diff against the host_vars | none |
 | `backup.yml` | snapshot, then stores it vault-encrypted in `pfsense_config_vault` (versioned); rewritten only when the config changed | none on pfSense |
+| `apply.yml` | pushes `host_vars/<firewall>/pfsense_resources.yml` (aliases, filter rules) with `pfsense_aggregate`, rules in list order, nothing purged; real run refused unless `pfsense_apply_confirm=true` | changes pfSense |
 | `restore.yml` | pushes the versioned config, drops `/tmp/config.cache`, reboots | **overwrites the config, reboots the gateway and VPN** |
 
 `restore.yml` refuses to run unless `pfsense_restore_confirm=true`.
 
 Vault encryption uses a random salt: `backup.yml` compares the SHA-256 of the
-fresh snapshot with the decrypted backup and re-encrypts only when they differ,
-so an unchanged pfSense never shows a git change.
+fresh snapshot with the decrypted backup (trailing newline normalised: pfSense
+may write the file without one) and re-encrypts only when they differ, so an
+unchanged pfSense never shows a git change.
+
+## Configuration as code
+
+`filter_plugins/pfsense_resources.py` (`pfsense_resources_from_config`) turns
+`config.xml` into the `pfsense_aggregate` format: aliases and filter rules in
+evaluation order (first match wins). Rules attached to a NAT port forward are
+left out, they belong to the NAT. pfsensible identifies a rule by name +
+interface: rule descriptions must stay unique per interface.
 
 ## Rebuild path
 
@@ -28,8 +38,8 @@ so an unchanged pfSense never shows a git change.
 
 ## Next steps
 
-Config as code with `pfsensible.core`, object by object: aliases, rules, NAT,
-then OpenVPN last. The backup stays as the safety net.
+NAT (port forwards with their associated rules, outbound), then OpenVPN last.
+The backup stays as the safety net.
 
 ## Variables
 

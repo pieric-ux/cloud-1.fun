@@ -503,6 +503,18 @@ le vault) pour savoir reconstruire, puis `pfsensible.core` objet par objet
   `/cf/conf/config.xml`, suppression `/tmp/config.cache`, reboot — coupe
   passerelle + VPN du rack. Install fraîche (pas de SSH) : clé USB avec
   `/config/config.xml` chargée au boot → étape du point zéro.
+- **Alias + règles as code (2026-10-29)** : filtre
+  `roles/pfsense/filter_plugins/pfsense_resources.py` → `host_vars/pfsense/
+  pfsense_resources.yml` (4 alias, 18 règles dans l'ordre d'évaluation ; les
+  2 règles associées aux redirections NAT C2 Hak5 sont exclues → avec le NAT).
+  Appliqué par `pfsense_aggregate` (`order_rules: true`, aucune purge),
+  `--tags pfsense-apply` (`never` + `pfsense_apply_confirm`). Seul écart au
+  1er `--check` : la règle « NTP from rack to pfSense » (créée en SSH) sans
+  balise `<statetype>` → pfsensible l'écrit toujours → appliqué en réel
+  (accord pieric, permission Claude Code ajoutée pour l'apply) : seul ce
+  changement, puis `--check` = 0, proposition snapshot = host_vars.
+  pfSense a réécrit `config.xml` sans saut de ligne final → la comparaison
+  du backup normalise (`awk 1`), sinon rechiffrement à chaque lancement.
 
 ## Où on en est / prochaine étape
 

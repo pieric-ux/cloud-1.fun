@@ -1,0 +1,19 @@
+---
+# Push host_vars/<firewall>/pfsense_resources.yml (aliases, filter rules) with
+# pfsense_aggregate, rules in list order (first match wins on pfSense).
+# Nothing is purged: objects not described (NAT-associated rules...) stay.
+# Always preview first with --check --diff: no change while the code matches.
+- name: Refuse a real run without explicit confirmation
+  ansible.builtin.assert:
+    that: ansible_check_mode or (pfsense_apply_confirm | bool)
+    fail_msg: >-
+      Real change on {{ inventory_hostname }}: preview with --check --diff,
+      then re-run with -e pfsense_apply_confirm=true.
+
+- name: Aliases and filter rules
+  pfsensible.core.pfsense_aggregate:
+    aggregated_aliases: "{{ pfsense_resources.aliases }}"
+    aggregated_rules: "{{ pfsense_resources.rules }}"
+    order_rules: true
+    purge_aliases: false
+    purge_rules: false

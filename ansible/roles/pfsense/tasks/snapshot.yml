@@ -19,3 +19,14 @@
     path: "{{ pfsense_snapshot_dir }}/config.xml"
     mode: "0600"
   delegate_to: localhost
+
+# Same conversion as the committed host_vars: diff this file against
+# host_vars/<firewall>/pfsense_resources.yml to spot changes made in the web UI.
+- name: Save the pfsense_resources proposal
+  ansible.builtin.copy:
+    content: >-
+      {{ {'pfsense_resources': lookup('ansible.builtin.file', pfsense_snapshot_dir ~ '/config.xml')
+         | pfsense_resources_from_config} | to_nice_yaml(indent=2, sort_keys=false) }}
+    dest: "{{ pfsense_snapshot_dir }}/pfsense_resources.yml"
+    mode: "0600"
+  delegate_to: localhost

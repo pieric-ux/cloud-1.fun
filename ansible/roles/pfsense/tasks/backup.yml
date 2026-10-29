@@ -5,16 +5,19 @@
 - name: Snapshot pfSense
   ansible.builtin.import_tasks: snapshot.yml
 
+# Compared with the trailing newline normalised (awk 1): pfSense may write the
+# file without one while ansible-vault view always ends with one.
 - name: Checksum of the fresh snapshot
-  ansible.builtin.stat:
-    path: "{{ pfsense_snapshot_dir }}/config.xml"
-    checksum_algorithm: sha256
+  ansible.builtin.shell:
+    cmd: set -o pipefail && awk 1 {{ (pfsense_snapshot_dir ~ '/config.xml') | quote }} | shasum -a 256 | cut -d' ' -f1
+    executable: /bin/bash
   register: pfsense_new
+  changed_when: false
   delegate_to: localhost
 
 - name: Checksum of the versioned backup (decrypted in memory)
   ansible.builtin.shell:
-    cmd: set -o pipefail && ansible-vault view {{ pfsense_config_vault | quote }} | shasum -a 256 | cut -d' ' -f1
+    cmd: set -o pipefail && ansible-vault view {{ pfsense_config_vault | quote }} | awk 1 | shasum -a 256 | cut -d' ' -f1
     executable: /bin/bash
   register: pfsense_old
   changed_when: false
@@ -33,12 +36,12 @@
     cmd: >-
       ansible-vault encrypt {{ pfsense_snapshot_dir }}/config.xml
       --output {{ pfsense_config_vault }}
-  when: pfsense_old.stdout != pfsense_new.stat.checksum
+  when: pfsense_old.stdout != pfsense_new.stdout
   delegate_to: localhost
 
 - name: Backup status
   ansible.builtin.debug:
     msg: >-
       {{ 'Backup updated: review and commit ' ~ pfsense_config_vault
-         if pfsense_old.stdout != pfsense_new.stat.checksum
+         if pfsense_old.stdout != pfsense_new.stdout
          else 'Backup already up to date' }}

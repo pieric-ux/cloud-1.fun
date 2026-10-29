@@ -1,0 +1,166 @@
+---
+# pfSense configuration as code, pfsensible.core pfsense_aggregate format.
+# Generated from config.xml (roles/pfsense/filter_plugins); rules in evaluation order.
+# NAT-associated rules are left out (modelled with the NAT).
+# Applied by 10-network.yml --tags pfsense-apply (check with --check --diff first).
+pfsense_resources:
+  aliases:
+  - name: MGMT_PORTS
+    type: port
+    address: 22 443
+    descr: https and ssh ports
+    detail: ssh||https
+  - name: RFC1918
+    type: network
+    address: 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
+    descr: private networks
+    detail: Entry added Tue, 13 Oct 2026 20:45:47 +0200||Entry added Tue, 13 Oct 2026
+      20:45:47 +0200||Entry added Tue, 13 Oct 2026 20:45:47 +0200
+  - name: WEB_PORTS
+    type: port
+    address: 80 443
+    descr: ''
+    detail: http||https
+  - name: NAS
+    type: host
+    address: 10.1.20.21 10.1.20.22
+    descr: Synology NAS, LAN1 and LAN2 (STORAGE VLAN 20)
+    detail: EN1||EN2
+  rules:
+  - name: VPN admin access
+    interface: openvpn
+    action: pass
+    ipprotocol: inet
+    protocol: tcp
+    source: 10.100.0.0/24
+    destination: (self)
+    destination_port: MGMT_PORTS
+  - name: VPN to MGMT
+    interface: openvpn
+    action: pass
+    ipprotocol: inet
+    protocol: any
+    source: 10.100.0.0/24
+    destination: 10.1.240.0/24
+  - name: VPN to PROD
+    interface: openvpn
+    action: pass
+    ipprotocol: inet
+    protocol: any
+    source: 10.100.0.0/24
+    destination: 10.1.10.0/24
+  - name: VPN to NAS web UI (DSM)
+    interface: openvpn
+    action: pass
+    ipprotocol: inet
+    protocol: tcp
+    source: 10.100.0.0/24
+    destination: NAS
+    destination_port: '5001'
+  - name: ping pfSense through tunnel
+    interface: openvpn
+    action: pass
+    ipprotocol: inet
+    protocol: icmp
+    source: 10.100.0.0/24
+    destination: (self)
+    icmptype: any
+  - name: Allow traffic to OpenVPN Server
+    interface: wan
+    action: pass
+    ipprotocol: inet
+    protocol: udp
+    source: any
+    destination: IP:wan
+    destination_port: '1194'
+  - name: MGMT admin access
+    interface: lan
+    action: pass
+    ipprotocol: inet
+    protocol: tcp
+    source: 10.1.240.0/24
+    destination: (self)
+    destination_port: MGMT_PORTS
+  - name: ping gateway
+    interface: lan
+    action: pass
+    ipprotocol: inet
+    protocol: icmp
+    source: 10.1.0.0/16
+    destination: (self)
+    icmptype: any
+  - name: NTP from rack to pfSense
+    interface: lan
+    action: pass
+    ipprotocol: inet
+    protocol: udp
+    source: 10.1.0.0/16
+    destination: IP:lan
+    destination_port: '123'
+  - name: Prometheus scrape
+    interface: lan
+    action: pass
+    ipprotocol: inet
+    protocol: tcp
+    source: 10.1.240.36
+    destination: (self)
+    destination_port: '9100'
+  - name: no other access on pfSense
+    interface: lan
+    action: block
+    ipprotocol: inet
+    protocol: any
+    source: 10.1.0.0/16
+    destination: (self)
+  - name: MGMT to internet
+    interface: lan
+    action: pass
+    ipprotocol: inet
+    protocol: any
+    source: 10.1.240.0/24
+    destination: '!RFC1918'
+  - name: STOR to internet
+    interface: lan
+    action: pass
+    ipprotocol: inet
+    protocol: tcp
+    source: NAS
+    destination: '!RFC1918'
+    destination_port: WEB_PORTS
+  - name: DMZ to internet
+    interface: lan
+    action: pass
+    ipprotocol: inet
+    protocol: any
+    source: 10.1.30.0/24
+    destination: '!RFC1918'
+  - name: PROD to internet
+    interface: lan
+    action: pass
+    ipprotocol: inet
+    protocol: any
+    source: 10.1.10.0/24
+    destination: '!RFC1918'
+  - name: l3sw to internet
+    interface: lan
+    action: pass
+    ipprotocol: inet
+    protocol: any
+    source: 10.1.255.1
+    destination: '!RFC1918'
+  - name: ping pfSense
+    interface: opt1
+    action: pass
+    ipprotocol: inet
+    protocol: icmp
+    source: 192.168.99.0/24
+    destination: (self)
+    icmptype: any
+  - name: admin access
+    interface: opt1
+    action: pass
+    ipprotocol: inet
+    protocol: tcp
+    source: 192.168.99.0/24
+    destination: (self)
+    destination_port: MGMT_PORTS

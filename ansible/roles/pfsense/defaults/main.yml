@@ -14,3 +14,6 @@ pfsense_config_vault: "{{ playbook_dir }}/files/{{ inventory_hostname }}/config.
 pfsense_restore_confirm: false
 # pfSense back on SSH after the reboot.
 pfsense_restore_up_timeout: 600
+
+# A real apply (no --check) is refused unless set to true on the command line.
+pfsense_apply_confirm: false

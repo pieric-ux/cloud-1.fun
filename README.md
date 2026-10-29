@@ -114,6 +114,9 @@ ansible-playbook 10-network.yml --tags apply --limit l2sw -e network_apply_confi
 # Couche 10 — sauvegarder la config pfSense chiffrée dans le repo (files/pfsense/)
 ansible-playbook 10-network.yml --limit pfsense --tags pfsense-backup
 
+# Couche 10 — appliquer alias et règles pfSense as code (prévisualiser avec --check --diff d'abord)
+ansible-playbook 10-network.yml --limit pfsense --tags pfsense-apply --check --diff
+
 # Couche 10 — RESTAURER pfSense (écrase la config et redémarre passerelle + VPN)
 ansible-playbook 10-network.yml --limit pfsense --tags pfsense-restore -e pfsense_restore_confirm=true
 
