@@ -4,6 +4,39 @@
 # NAT-associated rules are not in rules: they follow their port forward.
 # Applied by 10-network.yml --tags pfsense-apply (check with --check --diff first).
 pfsense_resources:
+  setup:
+    hostname: pfsense01
+    domain: cloud-1.fun
+    timezone: Europe/Zurich
+    timeservers: 2.pfsense.pool.ntp.org
+    language: en_US
+    dns_addresses: 10.1.240.31
+    dnsallowoverride: true
+    dns_hostnames: dhcp-dns
+    dns_gateways: none
+  dns_resolver:
+    state: present
+    dnssec: true
+    active_interface:
+    - lan
+    - lo0
+    hideidentity: true
+    hideversion: true
+    dnssecstripped: true
+    hosts:
+    - host: dhcp-dns
+      domain: cloud-1.fun
+      ip: 10.1.240.31
+      descr: Internal DHCP DNS server
+    domainoverrides:
+    - domain: cloud-1.fun
+      ip: 10.1.240.31
+      descr: dhcp-dns
+  dhcp_servers:
+  - interface: opt1
+    enable: true
+    range_from: 192.168.99.100
+    range_to: 192.168.99.110
   aliases:
   - name: MGMT_PORTS
     type: port

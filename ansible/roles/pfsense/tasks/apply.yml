@@ -11,6 +11,38 @@
       Real change on {{ inventory_hostname }}: preview with --check --diff,
       then re-run with -e pfsense_apply_confirm=true.
 
+# Drift guard: the live pfSense must still match the last versioned backup.
+# A difference means someone changed pfSense outside the code since then
+# (web UI, SSH): applying would silently overwrite or duplicate that change.
+# Compared through the filter, so XML reformatting is ignored.
+# Read-only on pfSense, local writes only: also runs under --check, which the
+# guard needs to compare anything.
+- name: Snapshot the live configuration
+  ansible.builtin.import_tasks: snapshot.yml
+  check_mode: false
+
+- name: Decrypt the versioned backup in memory
+  ansible.builtin.command:
+    cmd: ansible-vault view {{ pfsense_config_vault | quote }}
+  register: pfsense_backup_xml
+  changed_when: false
+  check_mode: false
+  no_log: true
+  delegate_to: localhost
+
+- name: Stop if pfSense drifted since the last backup
+  ansible.builtin.assert:
+    that: >-
+      pfsense_ignore_drift | bool or
+      (lookup('ansible.builtin.file', pfsense_snapshot_dir ~ '/config.xml') | pfsense_resources_from_config)
+      == (pfsense_backup_xml.stdout | pfsense_resources_from_config)
+    fail_msg: >-
+      pfSense changed outside the code since the last backup. Review
+      build/network/{{ inventory_hostname }}/pfsense_resources.yml against the
+      host_vars, update the code or revert the change, run --tags pfsense-backup,
+      then apply again (or -e pfsense_ignore_drift=true if intended).
+    quiet: true
+
 - name: Aliases, NAT port forwards and filter rules
   pfsensible.core.pfsense_aggregate:
     aggregated_aliases: "{{ pfsense_resources.aliases }}"
@@ -38,3 +70,22 @@
   loop: "{{ pfsense_resources.routes }}"
   loop_control:
     label: "{{ item.network }} via {{ item.gateway }}"
+
+- name: System settings (only the values below are managed)
+  pfsensible.core.pfsense_setup: "{{ pfsense_resources.setup }}"
+
+- name: DNS resolver (Unbound)
+  pfsensible.core.pfsense_dns_resolver: "{{ pfsense_resources.dns_resolver }}"
+
+- name: DHCP servers
+  pfsensible.core.pfsense_dhcp_server: "{{ item }}"
+  loop: "{{ pfsense_resources.dhcp_servers }}"
+  loop_control:
+    label: "{{ item.interface }}"
+
+# The live configuration is the new reference for the drift guard.
+- name: Refresh the versioned backup after a real apply
+  ansible.builtin.include_tasks:
+    file: backup.yml
+    apply: {tags: [always]}
+  when: not ansible_check_mode

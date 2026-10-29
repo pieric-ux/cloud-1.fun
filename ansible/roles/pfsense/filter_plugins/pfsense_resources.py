@@ -126,7 +126,56 @@ def pfsense_resources_from_config(config_xml):
             entry["disabled"] = True
         routes.append(entry)
 
+    system = root.find("system")
+    setup = {
+        "hostname": system.findtext("hostname"),
+        "domain": system.findtext("domain"),
+        "timezone": system.findtext("timezone"),
+        "timeservers": system.findtext("timeservers") or "",
+        "language": system.findtext("language") or "en_US",
+        "dns_addresses": " ".join(x.text for x in system.findall("dnsserver") if x.text),
+        "dnsallowoverride": system.find("dnsallowoverride") is not None,
+    }
+    # dns<N>host / dns<N>gw follow the order of the DNS servers.
+    count = len(system.findall("dnsserver"))
+    setup["dns_hostnames"] = " ".join(system.findtext(f"dns{i}host") or "" for i in range(1, count + 1))
+    setup["dns_gateways"] = " ".join(system.findtext(f"dns{i}gw") or "none" for i in range(1, count + 1))
+
+    unbound = root.find("unbound")
+    dns_resolver = {
+        "state": "present" if unbound.find("enable") is not None else "absent",
+        "dnssec": unbound.find("dnssec") is not None,
+        "active_interface": [x for x in (unbound.findtext("active_interface") or "").split(",") if x],
+        "hideidentity": unbound.find("hideidentity") is not None,
+        "hideversion": unbound.find("hideversion") is not None,
+        "dnssecstripped": unbound.find("dnssecstripped") is not None,
+        "hosts": [
+            {key: host.findtext(key) or "" for key in ("host", "domain", "ip", "descr")}
+            for host in unbound.findall("hosts")
+        ],
+        "domainoverrides": [
+            {key: override.findtext(key) or "" for key in ("domain", "ip", "descr")}
+            for override in unbound.findall("domainoverrides")
+        ],
+    }
+
+    # Only enabled DHCP servers: a disabled one with a leftover range (lan)
+    # carries no configuration worth keeping.
+    dhcp_servers = []
+    for iface in root.find("dhcpd") if root.find("dhcpd") is not None else []:
+        if iface.find("enable") is None:
+            continue
+        dhcp_servers.append({
+            "interface": iface.tag,
+            "enable": True,
+            "range_from": iface.findtext("range/from"),
+            "range_to": iface.findtext("range/to"),
+        })
+
     return {
+        "setup": setup,
+        "dns_resolver": dns_resolver,
+        "dhcp_servers": dhcp_servers,
         "aliases": aliases,
         "rules": rules,
         "nat_port_forwards": nat_port_forwards,

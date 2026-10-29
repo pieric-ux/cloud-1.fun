@@ -17,3 +17,7 @@ pfsense_restore_up_timeout: 600
 
 # A real apply (no --check) is refused unless set to true on the command line.
 pfsense_apply_confirm: false
+
+# Apply stops when the live pfSense differs from the last versioned backup
+# (change made outside the code). Set to true only when that change is known.
+pfsense_ignore_drift: false

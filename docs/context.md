@@ -523,6 +523,24 @@ le vault) pour savoir reconstruire, puis `pfsensible.core` objet par objet
   (créée par l'assistant) sans `<ipprotocol>` → appliqué en réel (micro-
   recharge du routage, sans coupure constatée), puis `--check` = 0. NAT
   sortant en `automatic` : rien à modéliser.
+- **Système / DNS / DHCP as code (2026-10-29)** : `pfsense_setup` (seulement
+  hostname, domaine, fuseau, NTP, DNS `dhcp-dns`, dnsallowoverride),
+  `pfsense_dns_resolver` (DNSSEC, `lan`+`lo0`, 1 host + 1 domain override),
+  `pfsense_dhcp_server` (opt1 seulement ; DHCP `lan` désactivé non
+  modélisé). Système et DHCP à 0 du 1er coup ; Unbound : le module écrit
+  toutes les options avancées par défaut (absentes du XML) → appliqué (DNS de
+  pfSense redémarré, sans impact : le rack résout via `dhcp-dns`).
+- **Incident de dérive (2026-10-29)** : benedict a renommé dans l'interface
+  « Prometheus scrape » en « Allow Prometheus to scrape node_exporter »
+  (supprimée + recréée **en fin de liste, après le `block` vers pfSense** →
+  scrape :9100 en fait bloqué) entre notre `--check` et l'apply. pfsensible
+  identifie par nom → a recréé « Prometheus scrape » à sa place (scrape
+  rétabli), la règle de l'UI reste en doublon mort. Décision : on garde le
+  nom du code, la règle de l'UI est à supprimer (bloquée par le garde-fou
+  Claude Code → faite par pieric). **Garde-fou de dérive ajouté à
+  `apply.yml`** : config live vs dernier backup versionné (via le filtre) →
+  arrêt si différent ; testé dans les deux sens. Backup rafraîchi
+  automatiquement après un apply réel. À terme : `purge_rules`.
 
 ## Où on en est / prochaine étape
 
