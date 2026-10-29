@@ -1,7 +1,7 @@
 ---
 # Switch configuration as code, cisco.ios resource modules format.
 # Cisco 3560-V2 (IOS 12.2): parsed offline from the running config (no '| section').
-# Applied by 10-network.yml --tags apply (check with --check --diff first).
+# Applied by 00-network.yml --tags apply (check with --check --diff first).
 ios_resources:
   vlans:
   - name: BLACKHOLE

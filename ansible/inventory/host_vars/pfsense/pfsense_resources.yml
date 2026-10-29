@@ -3,7 +3,7 @@
 # config.xml by roles/pfsense/filter_plugins, see the snapshot proposal).
 # Rules in evaluation order; NAT-associated rules follow their port forward.
 # Secrets are references to vault_pfsense_secrets (host_vars/pfsense/vault.yml).
-# Applied by 10-network.yml --tags pfsense-apply (check with --check --diff first).
+# Applied by 00-network.yml --tags pfsense-apply (check with --check --diff first).
 pfsense_resources:
   setup:
     hostname: pfsense01

@@ -1,5 +1,5 @@
 ---
-# iLO 4 access (Redfish, layer 00-bootstrap).
+# iLO 4 access (Redfish, layer 10-bootstrap).
 ilo_host: 10.1.240.21
 ilo_user: admin_teemo
 ilo_password: "{{ vault_ilo_password_pve01 }}"

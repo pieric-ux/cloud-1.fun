@@ -12,15 +12,17 @@ par l'automatisation, puis on restaure les backups (pve02 + copie remote).
 
 | Couche | Rôle | Outil |
 |---|---|---|
-| **00 — bootstrap** | Installer Proxmox sur pve01/pve02 via l'iLO | Ansible (Redfish) + ISO Proxmox auto-install |
-| **10 — network** | Switchs Cisco L2/L3 + pfSense | Ansible |
+| **00 — network** | Switchs Cisco L2/L3 + pfSense | Ansible |
+| **10 — bootstrap** | Installer Proxmox sur pve01/pve02 via l'iLO | Ansible (Redfish) + ISO Proxmox auto-install |
 | **20 — proxmox** | VMs (templates Packer, cloud-init, VLAN, `synology-lvm`) | Terraform `bpg/proxmox` |
 | **30 — config** | Users, durcissement SSH/CIS, services | Ansible |
 
-Ordre d'exécution d'un rebuild complet (porté par le `Makefile`) :
+Les numéros suivent l'ordre d'exécution d'un rebuild complet (porté par le
+`Makefile`), avec des trous pour insérer une couche (le Synology deviendra
+`05-storage`) :
 
 ```
-point zéro manuel → réseau (10) → Synology → bare metal (00) → VMs (20) → config (30) → restauration des backups
+point zéro manuel → réseau (00) → Synology → bare metal (10) → VMs (20) → config (30) → restauration des backups
 ```
 
 ## Structure
@@ -29,16 +31,16 @@ point zéro manuel → réseau (10) → Synology → bare metal (00) → VMs (20
 cloud-1-iac/
 ├── ansible/              # projet Ansible partagé par les couches 00, 10 et 30
 │   ├── site.yml          # point d'entrée : importe 00 → 10 → 30
-│   ├── 00-bootstrap.yml  # appelle le rôle redfish_bootstrap
-│   ├── 10-network.yml    # appelle les rôles ios_switch et pfsense
+│   ├── 00-network.yml    # appelle les rôles ios_switch et pfsense
+│   ├── 10-bootstrap.yml  # appelle le rôle redfish_bootstrap
 │   ├── 30-config.yml
 │   ├── inventory/        # zones/ (où) + baremetal/vms/lxc/network (quoi), group_vars, host_vars
 │   └── roles/
-│       ├── redfish_bootstrap/  # couche 00 : BMC (iLO), ISO auto-install, réinstallation
-│       ├── ios_switch/         # couche 10 : switchs Cisco, config as code
-│       ├── pfsense/            # couche 10 : pfSense (snapshot pour l'instant)
+│       ├── ios_switch/         # couche 00 : switchs Cisco, config as code
+│       ├── pfsense/            # couche 00 : pfSense, config as code + backup chiffré
+│       ├── redfish_bootstrap/  # couche 10 : BMC (iLO), RAID, ISO auto-install, réinstallation
 │       └── common, users, ssh-hardening, cis-hardening   # couche 30
-├── 00-bootstrap/         # hors Ansible : Dockerfile, ISO de base (gitignoré), build/ (gitignoré)
+├── 10-bootstrap/         # hors Ansible : Dockerfile, ISO de base (gitignoré), build/ (gitignoré)
 ├── 20-proxmox/           # Terraform
 ├── build/                # gitignoré : snapshots réseau
 ├── key/                  # gitignoré : clé SSH automation
@@ -89,36 +91,36 @@ Le runbook détaillé (quoi, pourquoi, comment vérifier) sera dans
 Toutes les commandes Ansible se lancent depuis `ansible/`.
 
 ```bash
-# Couche 00 — lecture seule de l'iLO (aucune modification du serveur)
-ansible-playbook 00-bootstrap.yml --limit pve01
+# Couche 00 — snapshot lecture seule des switchs et de pfSense → build/network/
+ansible-playbook 00-network.yml
 
-# Couche 00 — test de montage/éjection d'ISO (sans reboot, jamais lancé par défaut)
-ansible-playbook 00-bootstrap.yml --tags media-test --limit pve01
+# Couche 00 — prévisualiser l'application de la config des switchs (doit afficher 0 changement)
+ansible-playbook 00-network.yml --tags apply --check --diff --limit l2sw
 
-# Couche 00 — construire un ISO auto-install par hôte (local, Docker requis)
-ansible-playbook 00-bootstrap.yml --tags build-iso
+# Couche 00 — appliquer réellement (après le --check)
+ansible-playbook 00-network.yml --tags apply --limit l2sw -e network_apply_confirm=true
 
-# Couche 00 — RÉINSTALLATION (efface le disque système) : nœud vidé, groupe prévenu,
-# 00-bootstrap/build/ servi par npx http-server
-ansible-playbook 00-bootstrap.yml --tags install --limit pve02 -e pve_install_confirm=true
+# Couche 00 — sauvegarder la config pfSense chiffrée dans le repo (files/pfsense/)
+ansible-playbook 00-network.yml --limit pfsense --tags pfsense-backup
 
-# Couche 10 — snapshot lecture seule des switchs et de pfSense → build/network/
-ansible-playbook 10-network.yml
+# Couche 00 — appliquer alias et règles pfSense as code (prévisualiser avec --check --diff d'abord)
+ansible-playbook 00-network.yml --limit pfsense --tags pfsense-apply --check --diff
 
-# Couche 10 — prévisualiser l'application de la config des switchs (doit afficher 0 changement)
-ansible-playbook 10-network.yml --tags apply --check --diff --limit l2sw
+# Couche 00 — RESTAURER pfSense (écrase la config et redémarre passerelle + VPN)
+ansible-playbook 00-network.yml --limit pfsense --tags pfsense-restore -e pfsense_restore_confirm=true
 
-# Couche 10 — appliquer réellement (après le --check)
-ansible-playbook 10-network.yml --tags apply --limit l2sw -e network_apply_confirm=true
+# Couche 10 — lecture seule de l'iLO (aucune modification du serveur)
+ansible-playbook 10-bootstrap.yml --limit pve01
 
-# Couche 10 — sauvegarder la config pfSense chiffrée dans le repo (files/pfsense/)
-ansible-playbook 10-network.yml --limit pfsense --tags pfsense-backup
+# Couche 10 — test de montage/éjection d'ISO (sans reboot, jamais lancé par défaut)
+ansible-playbook 10-bootstrap.yml --tags media-test --limit pve01
 
-# Couche 10 — appliquer alias et règles pfSense as code (prévisualiser avec --check --diff d'abord)
-ansible-playbook 10-network.yml --limit pfsense --tags pfsense-apply --check --diff
+# Couche 10 — construire un ISO auto-install par hôte (local, Docker requis)
+ansible-playbook 10-bootstrap.yml --tags build-iso
 
-# Couche 10 — RESTAURER pfSense (écrase la config et redémarre passerelle + VPN)
-ansible-playbook 10-network.yml --limit pfsense --tags pfsense-restore -e pfsense_restore_confirm=true
+# Couche 10 — RÉINSTALLATION (efface le disque système) : nœud vidé, groupe prévenu,
+# 10-bootstrap/build/ servi par npx http-server
+ansible-playbook 10-bootstrap.yml --tags install --limit pve02 -e pve_install_confirm=true
 
 # Couche 30 — configuration des VMs
 ansible-playbook 30-config.yml

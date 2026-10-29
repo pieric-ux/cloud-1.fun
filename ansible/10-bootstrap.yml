@@ -1,6 +1,6 @@
 ---
-# Layer 00 - bare metal through the BMC (role redfish_bootstrap).
-#   default            read-only probe:    ansible-playbook 00-bootstrap.yml --limit pve01
+# Layer 10 - bare metal through the BMC (role redfish_bootstrap).
+#   default            read-only probe:    ansible-playbook 10-bootstrap.yml --limit pve01
 #   --tags media-test  mount/eject the stock ISO, no boot change, no reboot
 #   --tags build-iso   build the auto-install ISO per host (local, Docker)
 #   --tags install     DESTRUCTIVE reinstall, needs -e pve_install_confirm=true
@@ -43,9 +43,9 @@
       tags: [never, build-iso]
 
 # DESTRUCTIVE: unattended reinstall, WIPES the system disk. Prerequisites: ISO
-# built (--tags build-iso) and served from 00-bootstrap/build/ (npx http-server),
+# built (--tags build-iso) and served from 10-bootstrap/build/ (npx http-server),
 # node emptied of its VMs, group informed.
-#   ansible-playbook 00-bootstrap.yml --tags install --limit pve02 -e pve_install_confirm=true
+#   ansible-playbook 10-bootstrap.yml --tags install --limit pve02 -e pve_install_confirm=true
 - name: Reinstall Proxmox on bare-metal hosts through the BMC (DESTRUCTIVE)
   hosts: baremetal
   connection: local

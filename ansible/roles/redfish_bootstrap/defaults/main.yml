@@ -15,7 +15,7 @@ pve_install_down_timeout: 600
 pve_install_up_delay: 120
 pve_install_up_timeout: 3600
 
-# ISO build container (00-bootstrap/Dockerfile).
+# ISO build container (10-bootstrap/Dockerfile).
 pve_iso_image: pve-auto-install
-pve_iso_docker_context: "{{ playbook_dir }}/../00-bootstrap"
+pve_iso_docker_context: "{{ playbook_dir }}/../10-bootstrap"
 pve_iso_output: "pve-auto-{{ inventory_hostname }}.iso"

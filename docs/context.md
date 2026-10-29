@@ -29,7 +29,7 @@ total).
   numérotation des couches est gardée telle quelle ; l'ordre est porté par le
   Makefile.
 - **Ordre de dev ≠ ordre d'exécution** : le réseau existe déjà et marche → on
-  finit la couche 00 d'abord, la couche 10 s'insère *avant* elle dans le
+  finit la couche 10 d'abord, la couche 00 s'insère *avant* elle dans le
   Makefile ensuite.
 - **IP des iLO : statiques, point zéro** (idée de réservations DHCP pfSense
   abandonnée). Le DHCP du VLAN MGMT est servi par la VM `dhcp-dns` (dnsmasq),
@@ -44,7 +44,7 @@ total).
   - **Playbook preflight** lecture seule (à créer) lancé en tête de rebuild :
     vérifie les prérequis manuels (switchs, Synology, iLO + identifiants) et
     stoppe net avec un message clair si un manque. La partie lecture seule de
-    `00-bootstrap.yml` en est déjà la moitié.
+    `10-bootstrap.yml` en est déjà la moitié.
   - Le runbook rétrécit avec le temps : chaque étape automatisée en sort.
 - Synology : pas de collection Ansible officielle → API DSM (`SYNO.*` via
   `uri`) ou SSH + `synowebapi`. À explorer en lecture seule d'abord.
@@ -111,8 +111,8 @@ cloud-1-iac/
 │   ├── ansible.cfg             # repris tel quel d'infra04 (+ vault_password_file)
 │   ├── requirements.yml        # collections : community.general, cisco.ios, pfsensible.core
 │   ├── site.yml                # point d'entrée : import_playbook 00 → 10 → 30
-│   ├── 00-bootstrap.yml        # appels du rôle redfish_bootstrap (connection: local)
-│   ├── 10-network.yml          # appels des rôles ios_switch et pfsense
+│   ├── 10-bootstrap.yml        # appels du rôle redfish_bootstrap (connection: local)
+│   ├── 00-network.yml          # appels des rôles ios_switch et pfsense
 │   ├── 30-config.yml           # ex-contenu de site.yml (rôles sur vms:!lxc)
 │   ├── inventory/
 │   │   ├── zones/              # axe « où » : zones réseau
@@ -135,11 +135,11 @@ cloud-1-iac/
 │   │       └── l2sw/ / l3sw/   # vars.yml (mdp → vault, particularités IOS)
 │   │                           # + ios_resources.yml (config du switch as code)
 │   └── roles/
-│       ├── redfish_bootstrap/  # couche 00 : probe, media_test, build_iso, install ; ilo4/
-│       ├── ios_switch/         # couche 10 : snapshot, parse, apply (resources | rendered)
-│       ├── pfsense/            # couche 10 : snapshot (config.xml)
+│       ├── redfish_bootstrap/  # couche 10 : probe, media_test, build_iso, install ; ilo4/
+│       ├── ios_switch/         # couche 00 : snapshot, parse, apply (resources | rendered)
+│       ├── pfsense/            # couche 00 : snapshot (config.xml)
 │       └── common, users, ssh-hardening, cis-hardening   # couche 30 (infra04)
-├── 00-bootstrap/               # hors Ansible : Dockerfile, iso/ et build/ (gitignorés)
+├── 10-bootstrap/               # hors Ansible : Dockerfile, iso/ et build/ (gitignorés)
 ├── 20-proxmox/                 # Terraform bpg/proxmox
 ├── build/                      # gitignoré : snapshots réseau (build/network/<hôte>/)
 ├── key/                        # gitignoré : clé SSH automation (ansible, ansible.pub)
@@ -153,6 +153,15 @@ cloud-1-iac/
 Pourquoi pas un `ANSIBLE_CONFIG` partagé avec un dossier par couche : les
 chemins relatifs (rôles, inventaire) cassent selon le dossier de lancement.
 
+- **Renumérotation (2026-10-29)** : les numéros suivent l'ordre d'exécution
+  → `00-network` (switchs + pfSense) puis `10-bootstrap` (bare metal), car
+  iLO, NAS et hyperviseurs dépendent du réseau. `git mv` (historique
+  conservé) du dossier `10-bootstrap/` (ex-`00-…`) et des deux playbooks ;
+  chemins (`pve_iso_source`, `pve_iso_build_dir`, contexte Docker), imports
+  de `site.yml` (réordonnés) et docs mis à jour. Trous de 10 en 10 pour
+  insérer une couche (Synology → `05-storage`). Dans ce fichier, les numéros
+  ont été convertis au nouveau schéma (les messages de commit gardent
+  l'ancien).
 - **Playbooks à la racine d'`ansible/`** (pas de sous-dossier `playbooks/`) :
   à côté de `roles/`, ils trouvent les rôles sans config ; 4 playbooks ne
   justifient pas un dossier.
@@ -198,11 +207,11 @@ chemins relatifs (rôles, inventaire) cassent selon le dossier de lancement.
   `ansible_host`) et fichiers racine `baremetal` / `vms` / `lxc` (= *quoi*,
   ne citent que les noms d'hôtes ; Ansible fusionne → chaque donnée définie
   une seule fois). Dossier nommé `zones/` et pas `network/` pour ne pas
-  confondre avec la couche 10.
+  confondre avec la couche 00.
 - **Groupes d'inventaire** : `proxmox` → enfants `pve` (pve01, pve02) et
   `backup` (pbs ; renommé pour éviter un groupe et un hôte de même nom).
   Groupe à part **`baremetal`** (pve01, pve02, listés directement, pas
-  `children: pve`) = cible de `00-bootstrap.yml` : on groupe par *ce dont le
+  `children: pve`) = cible de `10-bootstrap.yml` : on groupe par *ce dont le
   play a besoin* (un iLO, pas d'OS) et non par rôle. `pve` et `baremetal`
   coïncident aujourd'hui, pas forcément demain. Le pbs (VM) n'y est pas.
 - **Variables iLO** : l'iLO est un *attribut* de l'hôte (pas un hôte à part :
@@ -285,9 +294,9 @@ plus tard, pas dans le repo).
 > Le repo piscine reste la **référence** (docs par module, rôles déjà écrits).
 > Ici on construit la version *transverse et orchestrée*.
 
-## Couche 00 — constats et choix
+## Couche 10 — constats et choix
 
-**Réglages du play `00-bootstrap.yml`** (`hosts: baremetal`) :
+**Réglages du play `10-bootstrap.yml`** (`hosts: baremetal`) :
 - `connection: local` : l'iLO (BMC) n'a ni shell ni Python → le module tourne
   sur le laptop et agit en client HTTPS. Pas de délégation à la VM `ansible` :
   elle n'existe pas en rebuild.
@@ -354,7 +363,7 @@ joignable par les iLO. `iso_url` en variable (`group_vars/baremetal`) pour
 pouvoir changer de serveur sans toucher au playbook. GUI iLO (console
 distante) = dépannage seulement (manuel, lié à la session).
 
-**ISO** : Proxmox VE **9.2** dans `00-bootstrap/iso/` (gitignoré). Clés
+**ISO** : Proxmox VE **9.2** dans `10-bootstrap/iso/` (gitignoré). Clés
 `answer.toml` en **kebab-case** en 9.x (`root-password-hashed`, …) → suivre
 le wiki « Automated Installation » 9.x. `proxmox-auto-install-assistant`
 = paquet Debian → conteneur Debian ou Proxmox, pas macOS.
@@ -363,7 +372,7 @@ le wiki « Automated Installation » 9.x. `proxmox-auto-install-assistant`
 d'install modifié, et n'a pas de builder bare metal ; une image disque
 commune casserait sur des serveurs hétérogènes. Il reste à la couche 20
 (templates VM). L'ISO = `proxmox-auto-install-assistant prepare-iso` dans un
-conteneur Debian (Dockerfile dans `00-bootstrap/`), **un ISO par hôte**
+conteneur Debian (Dockerfile dans `10-bootstrap/`), **un ISO par hôte**
 avec answer embarqué (plus simple que le mode HTTP, qui exige un serveur de
 réponses capable de traiter un POST).
 
@@ -409,8 +418,8 @@ Si le hook échoue : config simple de l'installeur → nœud sans doute
 injoignable → récupération par la console iLO.
 
 **Build ISO** (`--tags build-iso`, local, tag `never`) : rendu answer (`0600`)
-+ hook dans `00-bootstrap/build/<hôte>/` (gitignoré) → `validate-answer` →
-`prepare-iso` dans le conteneur (`00-bootstrap/Dockerfile`, debian trixie +
++ hook dans `10-bootstrap/build/<hôte>/` (gitignoré) → `validate-answer` →
+`prepare-iso` dans le conteneur (`10-bootstrap/Dockerfile`, debian trixie +
 dépôt Proxmox, `--platform linux/amd64`). Reconstruit seulement si answer ou
 hook changent. Pièges de `prepare-iso` : il copie l'ISO source **à côté
 d'elle** (→ `--tmp /work`, le dossier ISO étant monté en lecture seule) et
@@ -418,7 +427,7 @@ d'elle** (→ `--tmp /work`, le dossier ISO étant monté en lecture seule) et
 Les 2 ISO sont construits et inspectés (answer.toml, `mode = "iso"`,
 `proxmox-first-boot` présents).
 
-**Install** (play 2 de `00-bootstrap.yml`, DESTRUCTIF) : tag `never, install`
+**Install** (play 2 de `10-bootstrap.yml`, DESTRUCTIF) : tag `never, install`
 au niveau du play (0 tâche en run par défaut, vérifié) + `assert
 pve_install_confirm` (faux par défaut) → il faut **à la fois** `--tags install`
 et `-e pve_install_confirm=true`. `serial: 1` + `any_errors_fatal` : un nœud à
@@ -428,7 +437,7 @@ la fois, arrêt total si un échoue. Déroulé : HEAD sur l'ISO préparé → é
 8006 tombe **puis** revienne (sinon on validerait l'ancien nœud) → éjection →
 suppression de l'ancienne clé d'hôte SSH. `rescue` : si échec **avant** le
 reset, désarme le boot et éjecte ; **après**, ne touche à rien (l'installeur
-lit peut-être l'ISO). ISO préparé servi depuis `00-bootstrap/build/` via
+lit peut-être l'ISO). ISO préparé servi depuis `10-bootstrap/build/` via
 `pve_install_iso_url` (jamais depuis `iso/`). **Pas encore lancé : test prévu
 en fin de lab** (nœud vidé, groupe prévenu).
 
@@ -439,7 +448,7 @@ montage → éjecter immédiatement, vérifier l'ordre de boot (`GetBootOrder`)
 avant. Tests de montage avec l'**ISO de base** (installeur interactif,
 n'efface rien), jamais avec l'ISO préparé (s'installe seul et efface).
 
-## Couche 10 — constats et choix
+## Couche 00 — constats et choix
 
 **Équipements** (repo piscine `infra01/vlan_ip_plan.md`, `infra/other_equipment_notes.md`) :
 
@@ -470,7 +479,7 @@ par switch dans `host_vars/l2sw.yml` / `l3sw.yml`) — pièges résolus :
   clés sont ed25519. On reste au mot de passe.
 - ~8 échecs d'auth sur l2sw le 2026-10-28 soir (tests) : visibles dans son log.
 
-**`10-network.yml` étape 1 (lecture seule, OK sur les 2 switchs)** :
+**`00-network.yml` étape 1 (lecture seule, OK sur les 2 switchs)** :
 `ios_facts` + `gather_network_resources` (liste `ios_snapshot_resources` en
 group_vars, surchargée par hôte) + `show running-config` →
 `build/network/<hôte>/` (gitignoré, `0600`). pfSense : copie de
@@ -617,7 +626,7 @@ le vault) pour savoir reconstruire, puis `pfsensible.core` objet par objet
       packer, macos ; règles projet ajoutées au fur et à mesure — secrets en
       priorité). `.terraform.lock.hcl` volontairement versionné.
 - [x] Dossier `ansible/` repris d'`infra04` (inventaire, rôles, cfg, site.yml).
-- [x] Restructuration vers le layout ci-dessus (`10-network/` et `30-config/`
+- [x] Restructuration vers le layout ci-dessus (`00-network/` et `30-config/`
       supprimés, `ansible.log` gitignoré,
       `group_vars/all/vars.yml`, `site.yml` → imports, `requirements.yml`).
       `--syntax-check site.yml` et `ansible-inventory --graph` OK.
@@ -626,30 +635,30 @@ le vault) pour savoir reconstruire, puis `pfsensible.core` objet par objet
 - [x] 1er commit (amend à venir pour inclure l'inventaire).
 - [x] Accès iLO : `host_vars` pve01/pve02, vault de groupe, fichier de mot de
       passe du vault.
-- [x] `00-bootstrap.yml` **lecture seule** (`redfish_info` Systems/Manager +
+- [x] `10-bootstrap.yml` **lecture seule** (`redfish_info` Systems/Manager +
       `uri` GET brut VirtualMedia/2 et Systems/1) — OK sur pve01 et pve02.
 - [x] Clé SSH dans `key/` (gitignoré) ; `private_key_file` déplacé du cfg vers
       les groupes Linux.
-- [x] **Couche 00, étape 2** : ISO servi par `npx http-server` (laptop
+- [x] **Couche 10, étape 2** : ISO servi par `npx http-server` (laptop
       `10.1.240.111`, même sous-réseau mgmt que les iLO → pas de routage),
       Range vérifié (206). `iso_url` dans `group_vars/baremetal/vars.yml`.
-      Bloc montage/éjection dans `00-bootstrap.yml`, tag `never, media-test`
+      Bloc montage/éjection dans `10-bootstrap.yml`, tag `never, media-test`
       (jamais exécuté par défaut), éjection en `always`, assert
       `BootOnNextServerReset` false. **Testé OK sur pve02** (monté + éjecté,
       aucun impact). Constat : l'iLO 4 fait un `GET <iso>` au montage et un
       `GET <iso>?EJECT` à l'éjection (User-Agent vide).
-- [x] Couche 00, étape 3 (partiel) : méthode de boot tranchée (HPE),
+- [x] Couche 10, étape 3 (partiel) : méthode de boot tranchée (HPE),
       template `answer.toml.j2` + variables par hôte, mot de passe root haché
       au rendu (passlib installé), rendu validé.
-- [x] Couche 00, étape 3 : hook first-boot réseau, build ISO par hôte
+- [x] Couche 10, étape 3 : hook first-boot réseau, build ISO par hôte
       (`--tags build-iso`), answer validé par l'outil officiel, 2 ISO construits.
-- [x] Couche 00, étape 4 : play d'install destructif écrit (`never, install` +
+- [x] Couche 10, étape 4 : play d'install destructif écrit (`never, install` +
       confirmation). **Non exécuté** — test en fin de lab.
 - [ ] Gitea en LXC + push-mirror GitHub.
 - [ ] Synology dans le périmètre (partage ISO + iSCSI) — exploration API.
-- [x] Couche 10, étape 1 : snapshots lecture seule l2sw + l3sw, YAML des
+- [x] Couche 00, étape 1 : snapshots lecture seule l2sw + l3sw, YAML des
       ressources (l2sw gathered, l3sw parsed hors ligne), VTP transparent.
-- [ ] Couche 10, suite : pfSense (SSH), host_vars des switchs + `--check
+- [ ] Couche 00, suite : pfSense (SSH), host_vars des switchs + `--check
       --diff` à zéro, `no vstack`, durcissement, Oxidized (plus tard).
 - [ ] Couches 20 → 30, puis Makefile.
 
@@ -681,12 +690,12 @@ le vault) pour savoir reconstruire, puis `pfsensible.core` objet par objet
    - À faire ensuite : pfSense (SSH), durcissement
      (`no vstack` explicite, vty `access-class`, `no ip http server`).
 1. Lire ce `context.md`.
-2. Couche 00 écrite de bout en bout ; seul reste le **test réel de l'install
+2. Couche 10 écrite de bout en bout ; seul reste le **test réel de l'install
    en fin de lab** : vider un nœud, prévenir le groupe, servir
-   `00-bootstrap/build/` en npx, `--tags install --limit pveXX -e
+   `10-bootstrap/build/` en npx, `--tags install --limit pveXX -e
    pve_install_confirm=true`. Points à observer : hook réseau appliqué,
    cluster/iSCSI à refaire après (couche suivante).
-3. Couche 10 : intégrer le parsing hors ligne du l3sw au repo (aujourd'hui
+3. Couche 00 : intégrer le parsing hors ligne du l3sw au repo (aujourd'hui
    dans un playbook temporaire), YAML → `host_vars/l2sw.yml` / `l3sw.yml`
    (VLAN gérés sur les **deux** switchs depuis le passage en transparent),
    `--check --diff` = zéro changement ; débloquer SSH pfSense ;

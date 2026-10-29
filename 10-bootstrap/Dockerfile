@@ -1,6 +1,6 @@
 # proxmox-auto-install-assistant is a Debian package (Proxmox repo): it does
 # not run on macOS, so the ISO is prepared in this container.
-# Build: docker build --platform linux/amd64 -t pve-auto-install 00-bootstrap/
+# Build: docker build --platform linux/amd64 -t pve-auto-install 10-bootstrap/
 FROM debian:trixie-slim
 
 RUN apt-get update \

@@ -1,8 +1,9 @@
 ---
-# Entry point: runs every Ansible layer in order.
+# Entry point: runs every Ansible layer in execution order (network first:
+# the BMCs, the NAS and the hypervisors all depend on it).
 # Each layer can still be run on its own (ansible-playbook 30-config.yml).
-# 00 and 10 are commented out until written: importing an empty playbook fails.
+# 00 and 10 stay commented for now (decision pending, see docs/context.md).
 
-# - import_playbook: 00-bootstrap.yml
-# - import_playbook: 10-network.yml
+# - import_playbook: 00-network.yml
+# - import_playbook: 10-bootstrap.yml
 - import_playbook: 30-config.yml

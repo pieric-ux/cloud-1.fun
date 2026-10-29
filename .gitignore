@@ -135,7 +135,7 @@ vault-password*
 # Ansible run log (may contain sensitive output)
 ansible.log
 # Rendered answers/hooks (contain the root hash) and auto-install ISOs
-00-bootstrap/build/
+10-bootstrap/build/
 # Network snapshots (running configs, pfSense config.xml: hashes, keys)
 /build/
 # SSH automation key (private key must never be committed)

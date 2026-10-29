@@ -29,8 +29,8 @@ pve_net_storage_vlan: 20
 pve_net_bond1_mtu: 9000
 
 # Auto-install ISO build: answer + hook rendered here, ISO written here too.
-pve_iso_source: "{{ playbook_dir }}/../00-bootstrap/iso/proxmox-ve_9.2-1.iso"
-pve_iso_build_dir: "{{ playbook_dir }}/../00-bootstrap/build/{{ inventory_hostname }}"
+pve_iso_source: "{{ playbook_dir }}/../10-bootstrap/iso/proxmox-ve_9.2-1.iso"
+pve_iso_build_dir: "{{ playbook_dir }}/../10-bootstrap/build/{{ inventory_hostname }}"
 # Prepared ISO, served only during an install: npx http-server run from
-# 00-bootstrap/build/ (never from iso/, so it cannot be mistaken for the stock ISO).
+# 10-bootstrap/build/ (never from iso/, so it cannot be mistaken for the stock ISO).
 pve_install_iso_url: "http://10.1.240.111:8080/{{ inventory_hostname }}/pve-auto-{{ inventory_hostname }}.iso"

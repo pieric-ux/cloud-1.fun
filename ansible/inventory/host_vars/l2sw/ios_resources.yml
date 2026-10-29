@@ -1,7 +1,7 @@
 ---
 # Switch configuration as code, cisco.ios resource modules format.
 # Cisco 2960-X (IOS 15.2): read with state gathered.
-# Applied by 10-network.yml --tags apply (check with --check --diff first).
+# Applied by 00-network.yml --tags apply (check with --check --diff first).
 ios_resources:
   vlans:
   - mtu: 1500

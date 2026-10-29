@@ -1,10 +1,10 @@
 ---
-# Layer 10 - network devices.
+# Layer 00 - network devices.
 # Switches (role ios_switch):
 #   default         read-only snapshot -> build/network/<switch>/
-#                   ansible-playbook 10-network.yml --limit l2sw
+#                   ansible-playbook 00-network.yml --limit l2sw
 #   --tags apply    push host_vars/<switch>/ios_resources.yml; preview first:
-#                   ansible-playbook 10-network.yml --tags apply --check --diff --limit l2sw
+#                   ansible-playbook 00-network.yml --tags apply --check --diff --limit l2sw
 #                   a real run also needs -e network_apply_confirm=true
 # pfSense (role pfsense):
 #   default                read-only copy of config.xml -> build/network/pfsense/

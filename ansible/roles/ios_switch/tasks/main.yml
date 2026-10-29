@@ -1,5 +1,5 @@
 ---
 # Default entry point: the read-only snapshot only. Pushing the configuration
-# is picked explicitly with tasks_from: apply (see 10-network.yml).
+# is picked explicitly with tasks_from: apply (see 00-network.yml).
 - name: Read-only snapshot of the switch
   ansible.builtin.import_tasks: snapshot.yml
