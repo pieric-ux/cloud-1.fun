@@ -495,6 +495,26 @@ le vault) pour savoir reconstruire, puis `pfsensible.core` objet par objet
 - [ ] Couches 20 → 30, puis Makefile.
 
 ### Reprise suggérée pour la nouvelle session
+0. **Pause du 2026-10-28 soir — où on s'est arrêté :**
+   - l2sw : `--tags apply --check` = **zéro changement** (commité). Valeurs par
+     défaut IOS rendues explicites sur les SVI (`redirects`, `unreachables`,
+     IPv6 = true) : avec `replaced`, `ios_l3_interfaces` envoie sinon
+     `no ip redirects` (code `handle_defaults` du module).
+   - l3sw (mode `rendered`) : **zéro changement au `--check` (2026-10-29)**.
+     Le timeout venait du candidat écrit avec des `\n` littéraux (une seule
+     ligne) → construction déplacée dans `templates/ios_candidate.j2`
+     (liste de lignes), écrite dans `build/network/l3sw/candidate.cfg`
+     (`src` d'`ios_config` attend un chemin). Normalisation à l'affichage
+     IOS 12.2 : `no shutdown` retiré, `deny` + 3 espaces, pas de `host` en
+     ACL standard. Test sans toucher au switch : `-e ansible_host=127.0.0.1`
+     puis diff hors ligne `NetworkConfig` (moteur d'`ios_config`) contre la
+     running-config sauvegardée. Limite : `ios_config` voit ce qui
+     *manque*, pas ce qui est *en trop* sur le switch.
+   - Historique réécrit (messages détaillés, sans attribution) ; ancienne
+     version dans la branche `backup-before-reword` (à supprimer).
+   - Serveur `npx` arrêté.
+   - À faire ensuite : pfSense (SSH), durcissement
+     (`no vstack` explicite, vty `access-class`, `no ip http server`).
 1. Lire ce `context.md`.
 2. Couche 00 écrite de bout en bout ; seul reste le **test réel de l'install
    en fin de lab** : vider un nœud, prévenir le groupe, servir

@@ -162,39 +162,22 @@
               when: res.static_routes is defined
 
             # ios_vlans tries to reach the device even when rendering: VLANs are
-            # simple enough to write directly.
+            # simple enough to write directly (see templates/ios_candidate.j2).
             - name: Build the candidate config (top-level blocks, indented children)
               ansible.builtin.set_fact:
-                ios_candidate: >-
-                  {%- set blocks = {} -%}
-                  {%- set order = [] -%}
-                  {%- for v in res.vlans | default([]) -%}
-                  {%- set _ = order.append('vlan ' ~ v.vlan_id) -%}
-                  {%- set _ = blocks.update({'vlan ' ~ v.vlan_id: [' name ' ~ v.name]}) -%}
-                  {%- endfor -%}
-                  {%- set ns = namespace(parent=none) -%}
-                  {%- for r in [r_acls, r_interfaces, r_lag, r_l2, r_l3, r_acl_if, r_routes] -%}
-                  {%- for line in r.rendered | default([]) -%}
-                  {%- if line is match('^(interface|ip access-list|vlan) ') -%}
-                  {%- set ns.parent = line -%}
-                  {%- if line not in blocks -%}
-                  {%- set _ = order.append(line) -%}
-                  {%- set _ = blocks.update({line: []}) -%}
-                  {%- endif -%}
-                  {%- elif line is match('^ip route ') -%}
-                  {%- set ns.parent = none -%}
-                  {%- set _ = order.append(line) -%}
-                  {%- set _ = blocks.update({line: []}) -%}
-                  {%- else -%}
-                  {%- set _ = blocks[ns.parent].append(' ' ~ line) -%}
-                  {%- endif -%}
-                  {%- endfor -%}
-                  {%- endfor -%}
-                  {%- for p in order -%}{{ p }}{{ '\n' }}{%- for c in blocks[p] -%}{{ c }}{{ '\n' }}{%- endfor -%}{%- endfor -%}
+                ios_candidate_lines: "{{ lookup('ansible.builtin.template', 'ios_candidate.j2') | split('\n') | select | list }}"
+
+        - name: Save the candidate config for review
+          ansible.builtin.copy:
+            content: "{{ ios_candidate_lines | join('\n') }}\n"
+            dest: "{{ playbook_dir }}/../build/network/{{ inventory_hostname }}/candidate.cfg"
+            mode: "0600"
+          delegate_to: localhost
+          check_mode: false
 
         - name: Push the candidate config (only missing lines are sent)
           cisco.ios.ios_config:
-            src: "{{ ios_candidate }}"
+            src: "{{ playbook_dir }}/../build/network/{{ inventory_hostname }}/candidate.cfg"
 
 - name: Snapshot pfSense (read-only)
   hosts: firewall

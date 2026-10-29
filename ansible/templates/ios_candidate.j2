@@ -1,0 +1,41 @@
+{#- Hierarchical IOS config rebuilt from the rendered commands (rendered mode).
+    Top-level lines open a block, the following commands are its children. -#}
+{%- set blocks = {} -%}
+{%- set order = [] -%}
+{%- for v in res.vlans | default([]) -%}
+{%- set _ = order.append('vlan ' ~ v.vlan_id) -%}
+{%- set _ = blocks.update({'vlan ' ~ v.vlan_id: [' name ' ~ v.name]}) -%}
+{%- endfor -%}
+{%- set ns = namespace(parent=none) -%}
+{%- for r in [r_acls, r_interfaces, r_lag, r_l2, r_l3, r_acl_if, r_routes] -%}
+{%- for line in r.rendered | default([]) -%}
+{%- if line is match('^(interface|ip access-list|vlan) ') -%}
+{%- set ns.parent = line -%}
+{%- if line not in blocks -%}
+{%- set _ = order.append(line) -%}
+{%- set _ = blocks.update({line: []}) -%}
+{%- endif -%}
+{%- elif line is match('^ip route ') -%}
+{%- set ns.parent = none -%}
+{%- set _ = order.append(line) -%}
+{%- set _ = blocks.update({line: []}) -%}
+{%- else -%}
+{#- ios_config compares text line by line: write children the way IOS
+    displays them (default "no shutdown" hidden, "deny" padded to align
+    with "permit", no "host" keyword in standard ACLs). -#}
+{%- if line != 'no shutdown' -%}
+{%- set child = line | regex_replace('^deny ', 'deny   ') -%}
+{%- if ns.parent is match('^ip access-list standard ') -%}
+{%- set child = child | regex_replace('^(permit|deny) +host ', '\\1 ') -%}
+{%- endif -%}
+{%- set _ = blocks[ns.parent].append(' ' ~ child) -%}
+{%- endif -%}
+{%- endif -%}
+{%- endfor -%}
+{%- endfor -%}
+{% for p in order %}
+{{ p }}
+{% for c in blocks[p] %}
+{{ c }}
+{% endfor %}
+{% endfor %}
