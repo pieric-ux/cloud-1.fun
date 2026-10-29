@@ -1,3 +1,30 @@
 ---
 # Cisco Catalyst 2960-X, IOS 15.2: access switch.
 ansible_password: "{{ vault_switch_admin_password_l2sw }}"
+
+# Log timestamps in local time (l3sw keeps UTC).
+# Host-specific global lines (verbatim from the running config); secrets
+# from the switches vault.
+ios_global_config_host:
+  - lines:
+      - service timestamps debug datetime msec localtime show-timezone
+      - service timestamps log datetime msec localtime show-timezone
+      - hostname l2sw
+      - clock timezone CET 1 0
+      - enable secret {{ vault_switch_enable_secret_l2sw }}
+      - username admin privilege 15 secret {{ vault_switch_admin_secret_l2sw }}
+      - ip default-gateway 10.1.240.1
+      - define interface-range VLAN020_STOR GigabitEthernet1/0/25 - 36
+      - define interface-range PO1_UPLINK_L3 GigabitEthernet1/0/1 - 12
+      - define interface-range VLAN999_BLACKHOLE GigabitEthernet1/0/49 - 52
+      - define interface-range VLAN240_MGMT GigabitEthernet1/0/37 - 48
+      - define interface-range PO2_TRUNK_YUUMI GigabitEthernet1/0/13 , GigabitEthernet1/0/15 , GigabitEthernet1/0/17 , GigabitEthernet1/0/19
+      - define interface-range PO3_TRUNK_TEEMO GigabitEthernet1/0/14 , GigabitEthernet1/0/16 , GigabitEthernet1/0/18 , GigabitEthernet1/0/20
+      - define interface-range VLAN010_PROD GigabitEthernet1/0/21 - 24
+      - snmp-server enable traps snmp linkdown linkup coldstart warmstart
+      - snmp-server enable traps config
+      - snmp-server enable traps cpu threshold
+      - snmp-server enable traps bridge newroot topologychange
+      - snmp-server enable traps stpx inconsistency root-inconsistency loop-inconsistency
+      - snmp-server enable traps syslog
+      - snmp-server enable traps envmon fan shutdown supply temperature status

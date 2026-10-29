@@ -10,7 +10,7 @@ format, and is pushed with one of two methods depending on the IOS.
 |---|---|---|
 | `snapshot.yml` (default, `main.yml`) | `show` commands only; writes `running-config.txt`, `resources.yml` (raw) and `ios_resources.yml` (proposal) to `ios_snapshot_dir` | none |
 | `parse.yml` | offline parse of the saved running config (state parsed), for IOS without live parsers | none (never connects) |
-| `apply.yml` | pushes `ios_resources`; real run refused unless `network_apply_confirm=true` | changes the switch |
+| `apply.yml` | pushes `ios_resources`, then the global lines (`ios_global_config` + `ios_global_config_host`); real run refused unless `network_apply_confirm=true` | changes the switch |
 
 Always preview with `--check --diff`: it must show no change while the code
 matches the switch.
@@ -27,6 +27,20 @@ matches the switch.
   what is extra.
 
 Same data format for both: only the adapter changes.
+
+## Global lines and save
+
+Everything outside the resource modules (services, SSH, NTP, VTP, spanning
+tree, line con/vty, SNMP, enable secret, users, interface ranges...) is in
+`ios_global_config` (group) and `ios_global_config_host` (host), blocks of
+lines with optional `parents`, applied by `apply_global.yml` with
+`ios_config`. Secrets come from the switches vault. Lines whose value is the
+IOS default are left out: IOS never displays them, so ios_config would resend
+them on every run (e.g. `ip ssh authentication-retries 3`).
+
+Every task that changes the switch notifies the `Save switch config` handler:
+the running config is copied to startup once, only when something changed.
+Without it, a reboot would bring the previous startup config back.
 
 ## Filters (`filter_plugins/ios_resources.py`)
 

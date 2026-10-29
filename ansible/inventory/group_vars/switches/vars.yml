@@ -13,3 +13,55 @@ ansible_user: admin
 # The admin account is privilege 15: no enable step. Also overrides
 # become=True / become_method=sudo from ansible.cfg, meaningless on IOS.
 ansible_become: false
+
+# Global lines outside the resource modules (applied by ios_switch
+# apply_global.yml with ios_config, same on both IOS). Holds the hardening
+# already done by hand by the group, so a rebuilt switch gets it back, plus
+# the lines added since. Host-specific lines: ios_global_config_host.
+# Not here on purpose: "login block-for" would lock every login, Ansible
+# included, after a burst of failures (vty already limited by ACL-VTY);
+# Secrets (enable/admin hashes, SNMP community) come from the switches vault.
+ios_global_config:
+  - lines:
+      - no service pad
+      - service password-encryption
+      - service tcp-keepalives-in
+      - service tcp-keepalives-out
+      - no ip source-route
+      - no ip http server
+      - no ip http secure-server
+      - ip domain-name cloud-1.fun
+      - ip ssh version 2
+      - ip ssh time-out 60
+      # ip ssh authentication-retries: 3 is the IOS default, never displayed:
+      # listing it would make ios_config resend it on every run.
+      - ntp server 10.1.255.2
+      - no aaa new-model
+      - clock summer-time CEST recurring last Sun Mar 2:00 last Sun Oct 3:00
+      - ip name-server 10.1.240.31
+      - vtp domain vtp.lab
+      - vtp mode transparent
+      - spanning-tree mode rapid-pvst
+      - spanning-tree extend system-id
+      - port-channel load-balance src-dst-ip
+      - snmp-server community {{ vault_switch_snmp_community }} RO ACL-SNMP
+      - snmp-server host 10.1.240.36 version 2c {{ vault_switch_snmp_community }}
+  - parents: line con 0
+    lines:
+      - exec-timeout 15 0
+      - login local
+      - transport preferred none
+  - parents: line vty 0 4
+    lines:
+      - access-class ACL-VTY in
+      - exec-timeout 15 0
+      - login local
+      - transport preferred none
+      - transport input ssh
+  - parents: line vty 5 15
+    lines:
+      - access-class ACL-VTY in
+      - exec-timeout 15 0
+      - login local
+      - transport preferred none
+      - transport input ssh

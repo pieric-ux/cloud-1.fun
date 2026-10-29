@@ -469,6 +469,23 @@ l'adaptateur change. Limite : `ios_config` n'enlève pas → `no …` explicite.
   `access-class` sur les vty (SSH depuis MGMT seulement), SNMPv3.
 - Dette technique assumée : 3560-V2 en fin de vie → remplacement par un
   Catalyst IOS-XE (3650/9300) recommandé à terme.
+- **Config complète + durcissement (2026-10-29)** : audit running-config vs
+  code → tout ce qui sort des modules de ressources (services, SSH, NTP, VTP,
+  STP dont la priorité racine du l3sw, `ip routing`, `ip default-gateway`,
+  line con/vty, SNMP, enable secret, admin, interface-range, traps) ajouté en
+  `ios_global_config` (groupe) / `ios_global_config_host` (hôte), appliqué
+  par `apply_global.yml` (`ios_config`). Secrets (hashes enable/admin,
+  communauté SNMP) ajoutés au vault des switchs (même mot de passe de vault).
+  Hors code : lignes générées par l'IOS (version, boot markers, provision,
+  trustpoint autosigné, ntp clock-period, défauts affichés). Durcissement
+  ajouté et **appliqué** : `no ip redirects`/`unreachables` sur `Vlan240`,
+  tcp-keepalives in/out, `no ip source-route`, `ip ssh time-out 60`. Pièges :
+  `no vstack` n'existe plus en 15.2(7)E (Smart Install retiré) → l3sw seul ;
+  `ip ssh authentication-retries 3` = défaut jamais affiché → retiré.
+  **`write memory` manquait** : handler `Save switch config` notifié par
+  toute tâche qui modifie (configs sauvegardées). `--check` = 0, snapshots =
+  code. ⚠️ Communauté SNMP et hashes enable affichés dans la session lors de
+  l'audit (lab : non bloquant ; l3sw en MD5).
 
 **VTP → transparent (fait le 2026-10-28, sans coupure)** : l2sw (client) puis
 l3sw (serveur), `write memory`. Les VLAN sont dans la running-config des 2

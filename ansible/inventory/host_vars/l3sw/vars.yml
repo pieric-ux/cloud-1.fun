@@ -7,5 +7,72 @@ ansible_password: "{{ vault_switch_admin_password_l3sw }}"
 # offline (resource modules with state: parsed).
 ios_snapshot_resources: []
 # Resource modules read the live config with "| section" before diffing:
-# commands are rendered offline and pushed with ios_config instead (to do).
+# commands are rendered offline and pushed with ios_config instead.
 ios_apply_mode: rendered
+
+# Host-specific global lines (verbatim from the running config); secrets
+# from the switches vault.
+ios_global_config_host:
+  - lines:
+      - service timestamps debug datetime msec show-timezone
+      - service timestamps log datetime msec show-timezone
+      - hostname l3sw
+      # Smart Install (CVE-2018-0171) off; the command no longer exists on the
+      # l2sw IOS 15.2(7)E, where the feature was removed.
+      - no vstack
+      - clock timezone CET 1
+      - enable secret {{ vault_switch_enable_secret_l3sw }}
+      - username admin privilege 15 secret {{ vault_switch_admin_secret_l3sw }}
+      - system mtu routing 1500
+      - ip routing
+      - spanning-tree vlan 10,20,30,240,999 priority 24576
+      - define interface-range PO1_DOWNLINK_L2 FastEthernet0/1 - 12
+      - define interface-range VLAN999_BLACKHOLE FastEthernet0/13 - 47 , GigabitEthernet0/1 - 4
+      - snmp-server enable traps snmp authentication linkdown linkup coldstart warmstart
+      - snmp-server enable traps transceiver all
+      - snmp-server enable traps tty
+      - snmp-server enable traps eigrp
+      - snmp-server enable traps ospf state-change
+      - snmp-server enable traps ospf errors
+      - snmp-server enable traps ospf retransmit
+      - snmp-server enable traps ospf lsa
+      - snmp-server enable traps ospf cisco-specific state-change nssa-trans-change
+      - snmp-server enable traps ospf cisco-specific state-change shamlink interface-old
+      - snmp-server enable traps ospf cisco-specific state-change shamlink neighbor
+      - snmp-server enable traps ospf cisco-specific errors
+      - snmp-server enable traps ospf cisco-specific retransmit
+      - snmp-server enable traps ospf cisco-specific lsa
+      - snmp-server enable traps cluster
+      - snmp-server enable traps entity
+      - snmp-server enable traps cpu threshold
+      - snmp-server enable traps power-ethernet group 1
+      - snmp-server enable traps power-ethernet police
+      - snmp-server enable traps rep
+      - snmp-server enable traps vtp
+      - snmp-server enable traps vlancreate
+      - snmp-server enable traps vlandelete
+      - snmp-server enable traps flash insertion removal
+      - snmp-server enable traps port-security
+      - snmp-server enable traps auth-framework sec-violation
+      - snmp-server enable traps dot1x auth-fail-vlan guest-vlan no-auth-fail-vlan no-guest-vlan
+      - snmp-server enable traps envmon fan shutdown supply temperature status
+      - snmp-server enable traps bgp
+      - snmp-server enable traps cef resource-failure peer-state-change peer-fib-state-change inconsistency
+      - snmp-server enable traps config-copy
+      - snmp-server enable traps config
+      - snmp-server enable traps config-ctid
+      - snmp-server enable traps event-manager
+      - snmp-server enable traps hsrp
+      - snmp-server enable traps ipmulticast
+      - snmp-server enable traps isis
+      - snmp-server enable traps msdp
+      - snmp-server enable traps pim neighbor-change rp-mapping-change invalid-pim-message
+      - snmp-server enable traps energywise
+      - snmp-server enable traps vstack
+      - snmp-server enable traps bridge newroot topologychange
+      - snmp-server enable traps stpx inconsistency root-inconsistency loop-inconsistency
+      - snmp-server enable traps syslog
+      - snmp-server enable traps rtr
+      - snmp-server enable traps mac-notification change move threshold
+      - snmp-server enable traps vlan-membership
+      - snmp-server enable traps errdisable

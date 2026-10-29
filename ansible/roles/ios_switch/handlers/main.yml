@@ -1,3 +1,8 @@
 #SPDX-License-Identifier: MIT-0
 ---
-# handlers file for ios_switch
+# Resource modules and ios_config only change the running config: without a
+# save, a reboot brings the previous startup config back. Notified by every
+# task that changes the switch, so it runs once, only when something changed.
+- name: Save switch config
+  cisco.ios.ios_config:
+    save_when: always

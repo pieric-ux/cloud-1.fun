@@ -4,35 +4,44 @@
 - name: VLANs
   cisco.ios.ios_vlans: {config: "{{ ios_resources.vlans }}", state: replaced}
   when: ios_resources.vlans is defined
+  notify: Save switch config
 
 - name: ACLs
   cisco.ios.ios_acls: {config: "{{ ios_resources.acls }}", state: replaced}
   when: ios_resources.acls is defined
+  notify: Save switch config
 
 - name: Interfaces (description, enabled, speed...)
   cisco.ios.ios_interfaces: {config: "{{ ios_resources.interfaces }}", state: replaced}
   when: ios_resources.interfaces is defined
+  notify: Save switch config
 
 - name: Port-channels (LAG members)
   cisco.ios.ios_lag_interfaces: {config: "{{ ios_resources.lag_interfaces }}", state: replaced}
   when: ios_resources.lag_interfaces is defined
+  notify: Save switch config
 
 - name: LACP per interface
   cisco.ios.ios_lacp_interfaces: {config: "{{ ios_resources.lacp_interfaces }}", state: replaced}
   when: ios_resources.lacp_interfaces is defined
+  notify: Save switch config
 
 - name: L2 interfaces (access, trunk, allowed VLANs)
   cisco.ios.ios_l2_interfaces: {config: "{{ ios_resources.l2_interfaces }}", state: replaced}
   when: ios_resources.l2_interfaces is defined
+  notify: Save switch config
 
 - name: L3 interfaces (SVI addresses)
   cisco.ios.ios_l3_interfaces: {config: "{{ ios_resources.l3_interfaces }}", state: replaced}
   when: ios_resources.l3_interfaces is defined
+  notify: Save switch config
 
 - name: ACLs bound to interfaces
   cisco.ios.ios_acl_interfaces: {config: "{{ ios_resources.acl_interfaces }}", state: replaced}
   when: ios_resources.acl_interfaces is defined
+  notify: Save switch config
 
 - name: Static routes
   cisco.ios.ios_static_routes: {config: "{{ ios_resources.static_routes }}", state: replaced}
   when: ios_resources.static_routes is defined
+  notify: Save switch config

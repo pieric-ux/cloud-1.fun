@@ -61,3 +61,4 @@
 - name: Push the candidate config (only missing lines are sent)
   cisco.ios.ios_config:
     src: "{{ ios_snapshot_dir }}/candidate.cfg"
+  notify: Save switch config

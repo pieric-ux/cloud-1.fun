@@ -1,0 +1,13 @@
+---
+# Global lines outside the resource modules: group list (ios_global_config)
+# then host list (ios_global_config_host). Each item is a block of lines,
+# optionally under parents (e.g. "line vty 0 4"). ios_config only sends the
+# lines missing from the running config.
+- name: Global configuration lines
+  cisco.ios.ios_config:
+    parents: "{{ item.parents | default(omit) }}"
+    lines: "{{ item.lines }}"
+  loop: "{{ ios_global_config | default([]) + ios_global_config_host | default([]) }}"
+  loop_control:
+    label: "{{ item.parents | default('global') }}"
+  notify: Save switch config

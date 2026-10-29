@@ -557,8 +557,9 @@ ios_resources:
     ipv4:
     - address: 10.1.240.2/24
     name: Vlan240
-    redirects: true
-    unreachables: true
+    # Hardening: no ICMP redirects nor unreachables from the management SVI.
+    redirects: false
+    unreachables: false
     ipv6_redirects: true
     ipv6_unreachables: true
   lag_interfaces:

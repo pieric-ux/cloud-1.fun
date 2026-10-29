@@ -12,3 +12,9 @@
   ansible.builtin.include_tasks:
     file: "apply_{{ ios_apply_mode }}.yml"
     apply: {tags: [always]}
+
+- name: Apply global configuration lines
+  ansible.builtin.include_tasks:
+    file: apply_global.yml
+    apply: {tags: [always]}
+
