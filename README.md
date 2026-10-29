@@ -34,11 +34,13 @@ cloud-1-iac/
 │   ├── 00-network.yml    # appelle les rôles ios_switch et pfsense
 │   ├── 10-bootstrap.yml  # appelle le rôle redfish_bootstrap
 │   ├── 30-config.yml
+│   ├── preflight.yml     # vérifie le point zéro avant un rebuild
 │   ├── inventory/        # zones/ (où) + baremetal/vms/lxc/network (quoi), group_vars, host_vars
 │   └── roles/
 │       ├── ios_switch/         # couche 00 : switchs Cisco, config as code
 │       ├── pfsense/            # couche 00 : pfSense, config as code + backup chiffré
 │       ├── redfish_bootstrap/  # couche 10 : BMC (iLO), RAID, ISO auto-install, réinstallation
+│       ├── preflight/          # vérifications du point zéro (lecture seule)
 │       └── common, users, ssh-hardening, cis-hardening   # couche 30
 ├── 10-bootstrap/         # hors Ansible : Dockerfile, ISO de base (gitignoré), build/ (gitignoré)
 ├── 20-proxmox/           # Terraform
@@ -93,6 +95,9 @@ RAID P440, ISO, puis l'enchaînement automatisé.
 Toutes les commandes Ansible se lancent depuis `ansible/`.
 
 ```bash
+# Avant un rebuild — vérifier le point zéro (lecture seule, verdict à la fin)
+ansible-playbook preflight.yml
+
 # Couche 00 — snapshot lecture seule des switchs et de pfSense → build/network/
 ansible-playbook 00-network.yml
 

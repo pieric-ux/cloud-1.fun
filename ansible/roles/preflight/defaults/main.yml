@@ -1,0 +1,13 @@
+---
+# Python libraries the controller needs (imported with Ansible's own Python).
+preflight_python_libs: [passlib, paramiko, pylibsshext]
+# paramiko >= 4 dropped the SHA-1 key exchange the switches need.
+preflight_paramiko_max: "4"
+preflight_collections: [community.general, ansible.netcommon, cisco.ios, pfsensible.core]
+
+# Synology DSM (no inventory host yet: layer 05-storage to come).
+preflight_nas_hosts: [10.1.20.21, 10.1.20.22]
+preflight_nas_port: 5001
+
+# Network timeouts of the reachability checks (seconds).
+preflight_timeout: 5

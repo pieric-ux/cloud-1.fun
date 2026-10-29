@@ -1,0 +1,27 @@
+---
+# Runbook step 3: pfSense restored (SSH with the automation key, Python).
+- name: Check pfSense access
+  block:
+    - name: SSH port open
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 22
+        timeout: "{{ preflight_timeout }}"
+      delegate_to: localhost
+
+    - name: Ansible login with the automation key
+      ansible.builtin.ping:
+      ignore_unreachable: true
+      register: preflight_login
+
+    - name: Check the login
+      ansible.builtin.assert:
+        that: not (preflight_login.unreachable | default(false))
+        fail_msg: "SSH login refused: {{ preflight_login.msg | default('') }}"
+        quiet: true
+
+  rescue:
+    # Record the failure and go on: the summary play lists every problem.
+    - name: Record the failure
+      ansible.builtin.set_fact:
+        preflight_failures: "{{ preflight_failures | default([]) + ['pfSense access: ' ~ (ansible_failed_result.msg | default('failed'))] }}"

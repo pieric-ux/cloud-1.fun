@@ -1,0 +1,86 @@
+---
+# Runbook step 1: the control machine (runs on localhost).
+- name: Check control machine
+  block:
+    - name: Python libraries importable by Ansible
+      ansible.builtin.command:
+        cmd: "{{ ansible_playbook_python }} -c 'import {{ item }}'"
+      loop: "{{ preflight_python_libs }}"
+      changed_when: false
+
+    - name: Read paramiko version
+      ansible.builtin.command:
+        cmd: "{{ ansible_playbook_python }} -c 'import paramiko; print(paramiko.__version__)'"
+      register: preflight_paramiko
+      changed_when: false
+
+    - name: Check paramiko still has the SHA-1 key exchange (< 4)
+      ansible.builtin.assert:
+        that: preflight_paramiko.stdout is version(preflight_paramiko_max, '<')
+        fail_msg: "paramiko {{ preflight_paramiko.stdout }}: pipx inject --force ansible 'paramiko<4'"
+        quiet: true
+
+    - name: List installed collections
+      ansible.builtin.command:
+        cmd: ansible-galaxy collection list --format json
+      register: preflight_collections_json
+      changed_when: false
+
+    - name: Check required collections
+      ansible.builtin.assert:
+        that: >-
+          preflight_collections | difference(preflight_collections_json.stdout | from_json
+          | dict2items | map(attribute='value') | map('dict2items') | flatten
+          | map(attribute='key') | list) | length == 0
+        fail_msg: "Missing collections: ansible-galaxy collection install -r requirements.yml"
+        quiet: true
+
+    - name: Read the automation SSH key
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/../key/ansible"
+      register: preflight_key
+
+    - name: Check the automation SSH key (present, 0600)
+      ansible.builtin.assert:
+        that:
+          - preflight_key.stat.exists
+          - preflight_key.stat.mode == '0600'
+        fail_msg: "key/ansible missing or not 0600 (copy it from Bitwarden, chmod 600)"
+        quiet: true
+
+    - name: Read the vault password file
+      ansible.builtin.stat:
+        path: ~/.ansible/.vault_pass_cloud1
+      register: preflight_vault_pass
+
+    - name: Check every vault decrypts
+      ansible.builtin.command:
+        cmd: ansible-vault view {{ item }}
+      loop: "{{ query('ansible.builtin.fileglob', playbook_dir ~ '/inventory/*/*/vault.yml') }}"
+      loop_control:
+        label: "{{ item | relpath(playbook_dir) }}"
+      changed_when: false
+      no_log: true
+
+    - name: Check the ISO tools (needed for build-iso / install only)
+      ansible.builtin.command:
+        cmd: "{{ item }}"
+      loop: [docker info, npx --version]
+      register: preflight_tools
+      changed_when: false
+      failed_when: false
+
+    - name: Warnings
+      ansible.builtin.debug:
+        msg: "{{ item }}"
+      loop: >-
+        {{ (['~/.ansible/.vault_pass_cloud1 is ' ~ preflight_vault_pass.stat.mode ~ ': chmod 600']
+            if preflight_vault_pass.stat.exists and preflight_vault_pass.stat.mode != '0600' else [])
+           + (preflight_tools.results | rejectattr('rc', 'equalto', 0)
+              | map(attribute='item') | map('regex_replace', '^(.*)$', '\1 failed: needed for build-iso / install only') | list) }}
+
+  rescue:
+    # Record the failure and go on: the summary play lists every problem.
+    - name: Record the failure
+      ansible.builtin.set_fact:
+        preflight_failures: "{{ preflight_failures | default([]) + ['control machine: ' ~ (ansible_failed_result.msg | default('failed'))] }}"

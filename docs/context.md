@@ -41,7 +41,8 @@ total).
 - **Principe** : automatiser au maximum, documenter le reste avec la raison.
   - `docs/runbook-point-zero.md` (**écrit le 2026-10-29**) : étapes manuelles dans l'ordre,
     pour chacune *quoi*, *pourquoi pas automatisable*, *comment vérifier*.
-  - **Playbook preflight** lecture seule (à créer) lancé en tête de rebuild :
+  - **Playbook preflight** lecture seule (**fait le 2026-10-29** : rôle
+    `preflight`, `preflight.yml`) lancé en tête de rebuild :
     vérifie les prérequis manuels (switchs, Synology, iLO + identifiants) et
     stoppe net avec un message clair si un manque. La partie lecture seule de
     `10-bootstrap.yml` en est déjà la moitié.
@@ -700,8 +701,11 @@ le vault) pour savoir reconstruire, puis `pfsensible.core` objet par objet
    (VLAN gérés sur les **deux** switchs depuis le passage en transparent),
    `--check --diff` = zéro changement ; débloquer SSH pfSense ;
    `show vstack config` / `no vstack`.
-4. Playbook preflight (vérifie les étapes 1 à 7 du runbook
-   `docs/runbook-point-zero.md`, écrit).
+4. Preflight fait (`ansible-playbook preflight.yml`) : chaque zone dans un
+   block/rescue (un échec est enregistré, pas fatal : sinon un play dont tous
+   les hôtes échouent arrête le playbook), verdict final. 1er lancement :
+   tout OK sauf **pfSense SSH fermé** (port 22 fermé sur toutes ses adresses,
+   443 ouvert → pas sshguard ; à vérifier dans l'UI : SSH activé ? sshd ?).
 6. Passage en rôle `redfish_bootstrap` (nommé par ce qu'il fait) une fois les
    étapes connues : un fichier de tâches par étape, partie iLO 4 isolée
    (comme `Debian.yml` / `Alpine.yml`), `assert` de confirmation (défaut

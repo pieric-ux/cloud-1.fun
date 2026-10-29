@@ -1,0 +1,45 @@
+---
+# Runbook steps 5 to 7 (bare-metal hosts, from the controller): iLO, RAID, ISO.
+- name: Check BMC, RAID, ISO
+  block:
+    - name: iLO HTTPS port open
+      ansible.builtin.wait_for:
+        host: "{{ ilo_host }}"
+        port: 443
+        timeout: "{{ preflight_timeout }}"
+
+    - name: iLO credentials accepted (read-only Redfish GET)
+      ansible.builtin.uri:
+        url: "https://{{ ilo_host }}/redfish/v1/Systems/1/"
+        user: "{{ ilo_user }}"
+        password: "{{ ilo_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ ilo_validate_certs }}"
+
+    - name: RAID the install relies on
+      ansible.builtin.include_role:
+        name: redfish_bootstrap
+        tasks_from: raid_check
+        apply: {tags: [always]}
+
+    - name: Stock Proxmox ISO present
+      ansible.builtin.stat:
+        path: "{{ pve_iso_source }}"
+      register: preflight_iso
+      failed_when: not preflight_iso.stat.exists
+
+    - name: Prepared auto-install ISO
+      ansible.builtin.stat:
+        path: "{{ pve_iso_build_dir }}/pve-auto-{{ inventory_hostname }}.iso"
+      register: preflight_auto_iso
+
+    - name: Warning
+      ansible.builtin.debug:
+        msg: "No prepared ISO for {{ inventory_hostname }}: run --tags build-iso before an install"
+      when: not preflight_auto_iso.stat.exists
+
+  rescue:
+    # Record the failure and go on: the summary play lists every problem.
+    - name: Record the failure
+      ansible.builtin.set_fact:
+        preflight_failures: "{{ preflight_failures | default([]) + ['BMC, RAID, ISO: ' ~ (ansible_failed_result.msg | default('failed'))] }}"

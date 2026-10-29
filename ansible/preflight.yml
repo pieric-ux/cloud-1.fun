@@ -1,0 +1,80 @@
+---
+# Read-only checks of the manual "point zero" (docs/runbook-point-zero.md)
+# before a rebuild. Changes nothing anywhere.
+#   ansible-playbook preflight.yml
+# Every check runs even when one fails; the last play lists all problems and
+# fails if there is any. Warnings (debug) do not block.
+
+- name: Preflight - control machine (runbook step 1)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+
+  tasks:
+    - name: Control machine
+      ansible.builtin.import_role:
+        name: preflight
+        tasks_from: control
+
+    - name: Synology DSM (runbook step 4)
+      ansible.builtin.import_role:
+        name: preflight
+        tasks_from: storage
+
+- name: Preflight - switches (runbook step 2)
+  hosts: switches
+  gather_facts: false
+  become: false
+
+  tasks:
+    - name: Switch access
+      ansible.builtin.import_role:
+        name: preflight
+        tasks_from: switches
+
+- name: Preflight - pfSense (runbook step 3)
+  hosts: firewall
+  gather_facts: false
+  become: false
+
+  tasks:
+    - name: pfSense access
+      ansible.builtin.import_role:
+        name: preflight
+        tasks_from: firewall
+
+- name: Preflight - BMC, RAID and ISO (runbook steps 5 to 7)
+  hosts: baremetal
+  connection: local
+  gather_facts: false
+  become: false
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  module_defaults:
+    ansible.builtin.uri:
+      user: "{{ ilo_user }}"
+      password: "{{ ilo_password }}"
+      force_basic_auth: true
+      validate_certs: "{{ ilo_validate_certs }}"
+      status_code: [200, 202, 204]
+
+  tasks:
+    - name: BMC, RAID and ISO
+      ansible.builtin.import_role:
+        name: preflight
+        tasks_from: bmc
+
+- name: Preflight - verdict
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+
+  tasks:
+    - name: Verdict
+      ansible.builtin.import_role:
+        name: preflight
+        tasks_from: summary

@@ -1,0 +1,32 @@
+---
+# Runbook step 2: base access to the switches, then an Ansible login.
+- name: Check switch access
+  block:
+    - name: SSH port open
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 22
+        timeout: "{{ preflight_timeout }}"
+      delegate_to: localhost
+
+    - name: Ansible login (show version, read-only)
+      cisco.ios.ios_command:
+        commands: show version | include IOS
+      register: preflight_ios
+      ignore_unreachable: true
+
+    - name: Check the login
+      ansible.builtin.assert:
+        that: not (preflight_ios.unreachable | default(false))
+        fail_msg: "Ansible login refused: {{ preflight_ios.msg | default('') }}"
+        quiet: true
+
+    - name: Switch reached
+      ansible.builtin.debug:
+        msg: "{{ preflight_ios.stdout[0].splitlines() | first }}"
+
+  rescue:
+    # Record the failure and go on: the summary play lists every problem.
+    - name: Record the failure
+      ansible.builtin.set_fact:
+        preflight_failures: "{{ preflight_failures | default([]) + ['switch access: ' ~ (ansible_failed_result.msg | default('failed'))] }}"

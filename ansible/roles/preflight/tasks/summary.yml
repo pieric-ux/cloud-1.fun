@@ -1,0 +1,16 @@
+---
+# Final verdict (runs on localhost): every recorded failure, from every host.
+- name: Collect the failures of every host
+  ansible.builtin.set_fact:
+    preflight_all_failures: >-
+      {{ groups['all'] | map('extract', hostvars) | selectattr('preflight_failures', 'defined')
+         | map(attribute='preflight_failures') | flatten | list }}
+    preflight_failed_hosts: >-
+      {{ groups['all'] | map('extract', hostvars)
+         | selectattr('preflight_failures', 'defined') | map(attribute='inventory_hostname') | list }}
+
+- name: Preflight verdict
+  ansible.builtin.assert:
+    that: preflight_all_failures | length == 0
+    fail_msg: "Point zero not ready on {{ preflight_failed_hosts }}: {{ preflight_all_failures }}"
+    success_msg: "Point zero ready: every check passed."

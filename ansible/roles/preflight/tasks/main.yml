@@ -1,0 +1,4 @@
+---
+# Each area is a separate task file, called by preflight.yml on its hosts.
+- name: Control machine checks
+  ansible.builtin.import_tasks: control.yml

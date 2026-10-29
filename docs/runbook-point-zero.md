@@ -223,5 +223,12 @@ Une fois le point zéro fait, dans l'ordre (depuis `ansible/`) :
 5. **VMs** (`20-proxmox`, Terraform) puis **config** (`30-config.yml`) : à venir.
 6. **Restauration des backups** (PBS : pve02 + copie remote).
 
-Un playbook de **preflight** (à venir) vérifiera automatiquement les étapes 1 à
-7 avant l'enchaînement.
+**Avant l'enchaînement**, vérifier automatiquement les étapes 1 à 7 (lecture
+seule, ne modifie rien) :
+```bash
+cd ansible && ansible-playbook preflight.yml
+```
+Toutes les vérifications tournent même si l'une échoue ; le dernier play donne
+le verdict (`Point zero ready` ou la liste des problèmes par hôte). Les
+avertissements (Docker, npx, ISO préparés, droits du fichier de mot de passe
+du vault) ne bloquent pas.

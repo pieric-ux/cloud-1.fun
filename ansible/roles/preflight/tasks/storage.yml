@@ -1,0 +1,16 @@
+---
+# Runbook step 4: Synology DSM reachable (runs on localhost).
+- name: Check Synology DSM
+  block:
+    - name: DSM reachable
+      ansible.builtin.wait_for:
+        host: "{{ item }}"
+        port: "{{ preflight_nas_port }}"
+        timeout: "{{ preflight_timeout }}"
+      loop: "{{ preflight_nas_hosts }}"
+
+  rescue:
+    # Record the failure and go on: the summary play lists every problem.
+    - name: Record the failure
+      ansible.builtin.set_fact:
+        preflight_failures: "{{ preflight_failures | default([]) + ['Synology DSM: ' ~ (ansible_failed_result.msg | default('failed'))] }}"
