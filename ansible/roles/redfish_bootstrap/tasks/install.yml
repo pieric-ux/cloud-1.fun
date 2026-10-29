@@ -15,6 +15,11 @@
     password: null
     force_basic_auth: false
 
+# Before touching the iLO: the disk the answer targets must be the expected,
+# healthy RAID volume (the installer would stop halfway otherwise).
+- name: Check the RAID the install relies on
+  ansible.builtin.import_tasks: raid_check.yml
+
 - name: Arm the install
   block:
     - name: Read media state

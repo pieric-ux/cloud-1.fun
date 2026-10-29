@@ -317,6 +317,37 @@ plus tard, pas dans le repo).
 - `SerialNumber` **vide** → impossible d'identifier les hôtes par serial
   (answer HTTP) → passer par la MAC.
 
+**RAID des P440 — non couvert par le code (constaté le 2026-10-29, À FAIRE)**.
+Lu en lecture seule via Redfish (`/redfish/v1/Systems/1/SmartStorage/ArrayControllers/`,
+liens HAL `links.*.href` sur iLO 4 ; identifiant du contrôleur différent selon
+l'hôte → passer par la liste `Members`) :
+
+| | pve01 | pve02 |
+|---|---|---|
+| Contrôleur | Smart Array P440, slot 1, fw 7.00, cache 4 Go | Smart Array P440ar intégré, slot 0, fw 7.00, cache 2 Go |
+| Volume | RAID 1, 139 979 Mio, stripe 256 Kio | RAID 1, 139 979 Mio, stripe 256 Kio |
+| Disques | 2 × 146 Go SAS 15k, `1I:1:17` + `1I:1:18` | 2 × 146 Go SAS 15k, `1I:3:1` + `1I:3:2` |
+| VolumeUniqueIdentifier | `600508B1001CB60EB8325EF6DA69C87A` | `600508B1001C400589558BA5BEF164EE` |
+
+L'identifiant = `pve_install_disk_serial` de l'answer (Linux préfixe `3`, minuscules) :
+le bootstrap cible bien ce volume. La config RAID vit sur le contrôleur et les
+disques : elle survit aux réinstallations, perdue seulement si disques/contrôleur
+remplacés ou array effacé → l'install s'arrête (filtre disque introuvable).
+Pas automatisable proprement sur Gen9 : SmartStorage en **lecture seule** sur
+iLO 4 (config RAID par Redfish = iLO 5 / Gen10) ; création via `ssacli` (OS
+lancé) ou HPE SSA (F10) seulement.
+**Fait (2026-10-29)** : RAID attendu en `host_vars` (`pve_raid` : modèle de
+contrôleur, niveau, stripe, baies) ; vérification Redfish en lecture seule
+`redfish_bootstrap/tasks/raid_check.yml` (+ `ilo4/raid_state.yml`) lancée par
+le `probe` et **en tête d'`install`** (après confirmation, avant toute action
+sur l'iLO) : contrôleur, santé, volume dont l'identifiant ==
+`pve_install_disk_serial`, RAID 1, stripe, baies, disques sains. OK sur les 2
+hôtes ; cas d'échec testé (identifiant faux → arrêt avec état réel/attendu).
+**Reste à faire** : la création elle-même, manuelle (runbook point zéro) :
+`ssacli ctrl slot=1 create type=ld drives=1I:1:17,1I:1:18 raid=1 ss=256`
+(pve01), `slot=0` + `1I:3:1,1I:3:2` (pve02), ou HPE SSA (F10), puis **mettre
+à jour `pve_install_disk_serial`** (nouveau volume = nouvel identifiant).
+
 **Servir l'ISO** : l'iLO lit par requêtes HTTP **Range** → `python3 -m
 http.server` ne marche pas. Choix : **`npx http-server` sur le laptop**,
 joignable par les iLO. `iso_url` en variable (`group_vars/baremetal`) pour
@@ -660,7 +691,8 @@ le vault) pour savoir reconstruire, puis `pfsensible.core` objet par objet
    (VLAN gérés sur les **deux** switchs depuis le passage en transparent),
    `--check --diff` = zéro changement ; débloquer SSH pfSense ;
    `show vstack config` / `no vstack`.
-4. Runbook point zéro, playbook preflight.
+4. Runbook point zéro (dont recréation manuelle du RAID P440), playbook
+   preflight.
 6. Passage en rôle `redfish_bootstrap` (nommé par ce qu'il fait) une fois les
    étapes connues : un fichier de tâches par étape, partie iLO 4 isolée
    (comme `Debian.yml` / `Alpine.yml`), `assert` de confirmation (défaut

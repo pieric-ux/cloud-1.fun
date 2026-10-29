@@ -20,3 +20,12 @@ pve_net_storage_cidr: 10.1.20.11/24
 # the rendered answer stays identical between runs.
 pve_install_root_password_salt: O7X0CvlEns/E7Kku
 pve_install_root_password_hash: "{{ vault_pve_root_password_pve01 | password_hash('sha512', pve_install_root_password_salt) }}"
+
+# Expected RAID (checked read-only before install; created by hand with
+# ssacli or HPE SSA: SmartStorage is read-only on iLO 4). A recreated volume
+# gets a new identifier: update pve_install_disk_serial.
+pve_raid:
+  controller_model: Smart Array P440 Controller
+  level: "1"
+  stripe_kib: 256
+  drives: [1I:1:17, 1I:1:18]

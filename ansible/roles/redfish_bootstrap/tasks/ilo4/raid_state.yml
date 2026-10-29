@@ -1,0 +1,47 @@
+---
+# iLO 4: read the Smart Array state (read-only, GET only). HPE SmartStorage
+# resources use HAL links (links.<name>.href); the controller id differs
+# between hosts (P440 slot 1, P440ar embedded), so it is taken from the list.
+# Sets redfish_raid: controller, logical_drives, physical_drives.
+- name: Read the array controllers list
+  ansible.builtin.uri:
+    url: "https://{{ ilo_host }}/redfish/v1/Systems/1/SmartStorage/ArrayControllers/"
+  register: raid_controllers
+
+- name: Read the array controller
+  ansible.builtin.uri:
+    url: "https://{{ ilo_host }}{{ raid_controllers.json.Members[0]['@odata.id'] }}"
+  register: raid_controller
+
+- name: Read the logical drives list
+  ansible.builtin.uri:
+    url: "https://{{ ilo_host }}{{ raid_controller.json.links.LogicalDrives.href }}"
+  register: raid_ld_list
+
+- name: Read each logical drive
+  ansible.builtin.uri:
+    url: "https://{{ ilo_host }}{{ item['@odata.id'] }}"
+  loop: "{{ raid_ld_list.json.Members }}"
+  loop_control:
+    label: "{{ item['@odata.id'] }}"
+  register: raid_lds
+
+- name: Read the physical drives list
+  ansible.builtin.uri:
+    url: "https://{{ ilo_host }}{{ raid_controller.json.links.PhysicalDrives.href }}"
+  register: raid_pd_list
+
+- name: Read each physical drive
+  ansible.builtin.uri:
+    url: "https://{{ ilo_host }}{{ item['@odata.id'] }}"
+  loop: "{{ raid_pd_list.json.Members }}"
+  loop_control:
+    label: "{{ item['@odata.id'] }}"
+  register: raid_pds
+
+- name: Keep the RAID state
+  ansible.builtin.set_fact:
+    redfish_raid:
+      controller: "{{ raid_controller.json }}"
+      logical_drives: "{{ raid_lds.results | map(attribute='json') | list }}"
+      physical_drives: "{{ raid_pds.results | map(attribute='json') | list }}"

@@ -1,0 +1,42 @@
+---
+# Read-only check of the RAID the install relies on (pve_raid in host_vars).
+# The array itself cannot be created through the iLO 4 API (read-only): this
+# only refuses to go on when the disk the answer targets is not the expected,
+# healthy volume. Recreate by hand (ssacli / HPE SSA), then update
+# pve_install_disk_serial.
+- name: Read the RAID state
+  ansible.builtin.include_tasks:
+    file: "{{ redfish_vendor }}/raid_state.yml"
+    apply: {tags: [always]}
+
+- name: Find the logical drive the answer targets
+  ansible.builtin.set_fact:
+    raid_target: >-
+      {{ redfish_raid.logical_drives
+         | selectattr('VolumeUniqueIdentifier', 'defined')
+         | selectattr('VolumeUniqueIdentifier', 'search', '(?i)^' ~ pve_install_disk_serial[1:] ~ '$')
+         | list | first | default({}) }}
+
+- name: Check controller, volume, identifier and drives
+  ansible.builtin.assert:
+    that:
+      - redfish_raid.controller.Model == pve_raid.controller_model
+      - redfish_raid.controller.Status.Health == 'OK'
+      - raid_target | length > 0
+      - raid_target.Raid == pve_raid.level
+      - raid_target.StripeSizeBytes == pve_raid.stripe_kib * 1024
+      - raid_target.Status.Health == 'OK'
+      - redfish_raid.physical_drives | map(attribute='Location') | sort == pve_raid.drives | sort
+      - redfish_raid.physical_drives | map(attribute='Status.Health') | unique == ['OK']
+    fail_msg: >-
+      RAID on {{ inventory_hostname }} is not the expected one
+      (controller {{ redfish_raid.controller.Model }}, volumes
+      {{ redfish_raid.logical_drives | map(attribute='VolumeUniqueIdentifier') | list }},
+      drives {{ redfish_raid.physical_drives | map(attribute='Location') | list }}).
+      Expected {{ pve_raid }} with identifier {{ pve_install_disk_serial }}.
+      Recreate the volume by hand (docs/context.md, "RAID des P440") and
+      update pve_install_disk_serial.
+    success_msg: >-
+      RAID {{ pve_raid.level }} OK on {{ redfish_raid.controller.Model }}:
+      volume {{ raid_target.VolumeUniqueIdentifier | default('?') }} = install target,
+      drives {{ pve_raid.drives | join(', ') }} healthy.

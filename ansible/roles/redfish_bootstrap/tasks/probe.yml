@@ -43,3 +43,6 @@
 - name: Show boot settings and allowed boot targets
   ansible.builtin.debug:
     var: redfish_raw.results[1].json.Boot
+
+- name: Check the RAID the install relies on
+  ansible.builtin.import_tasks: raid_check.yml
