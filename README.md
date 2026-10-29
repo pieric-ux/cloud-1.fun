@@ -83,8 +83,10 @@ Ce qui ne peut pas être automatisé, car aucune API n'existe encore à ce stade
 2. Installation de DSM et premier compte admin sur le Synology.
 3. Compte iLO sur chaque serveur (automatisable plus tard via Redfish).
 
-Le runbook détaillé (quoi, pourquoi, comment vérifier) sera dans
-`docs/runbook-point-zero.md`.
+Le runbook détaillé (quoi, pourquoi, comment vérifier, dans l'ordre) est dans
+[`docs/runbook-point-zero.md`](docs/runbook-point-zero.md) : poste de contrôle,
+accès de base des switchs, restauration de pfSense par clé USB, DSM, iLO,
+RAID P440, ISO, puis l'enchaînement automatisé.
 
 ## Utilisation
 
