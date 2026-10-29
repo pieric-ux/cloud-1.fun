@@ -1,7 +1,8 @@
 ---
-# pfSense configuration as code, pfsensible.core pfsense_aggregate format.
-# Generated from config.xml (roles/pfsense/filter_plugins); rules in evaluation order.
-# NAT-associated rules are not in rules: they follow their port forward.
+# pfSense configuration as code, pfsensible.core format (generated from
+# config.xml by roles/pfsense/filter_plugins, see the snapshot proposal).
+# Rules in evaluation order; NAT-associated rules follow their port forward.
+# Secrets are references to vault_pfsense_secrets (host_vars/pfsense/vault.yml).
 # Applied by 10-network.yml --tags pfsense-apply (check with --check --diff first).
 pfsense_resources:
   setup:
@@ -14,6 +15,130 @@ pfsense_resources:
     dnsallowoverride: true
     dns_hostnames: dhcp-dns
     dns_gateways: none
+  cas:
+  - name: infra-ca
+    trust: false
+    randomserial: false
+    certificate: '{{ vault_pfsense_secrets[''ca/infra-ca/crt''] }}'
+    key: '{{ vault_pfsense_secrets[''ca/infra-ca/key''] }}'
+  certs:
+  - name: infra-vpn-server
+    certtype: server
+    certificate: '{{ vault_pfsense_secrets[''cert/infra-vpn-server/crt''] }}'
+    key: '{{ vault_pfsense_secrets[''cert/infra-vpn-server/key''] }}'
+    ca: infra-ca
+  - name: vpn-pieric-ca
+    certtype: user
+    certificate: '{{ vault_pfsense_secrets[''cert/vpn-pieric-ca/crt''] }}'
+    key: '{{ vault_pfsense_secrets[''cert/vpn-pieric-ca/key''] }}'
+    ca: infra-ca
+  - name: vpn-alexis
+    certtype: user
+    certificate: '{{ vault_pfsense_secrets[''cert/vpn-alexis/crt''] }}'
+    key: '{{ vault_pfsense_secrets[''cert/vpn-alexis/key''] }}'
+    ca: infra-ca
+  - name: vpn-benedict-ca
+    certtype: user
+    certificate: '{{ vault_pfsense_secrets[''cert/vpn-benedict-ca/crt''] }}'
+    key: '{{ vault_pfsense_secrets[''cert/vpn-benedict-ca/key''] }}'
+    ca: infra-ca
+  users:
+  - name: admin
+    descr: System Administrator
+    scope: system
+    uid: '0'
+    groups:
+    - admins
+    priv:
+    - user-shell-access
+    password: '{{ vault_pfsense_secrets[''user/admin/password''] }}'
+    authorizedkeys: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA/Cw4uZHVC34HkDoiCt/JiE8vdZCXLfGA6qOLsEl3e7 default@infra.fun
+  - name: vpn-alexis
+    descr: ''
+    scope: user
+    uid: '2000'
+    groups: []
+    priv: []
+    password: '{{ vault_pfsense_secrets[''user/vpn-alexis/password''] }}'
+  - name: vpn-benedict
+    descr: ''
+    scope: user
+    uid: '2002'
+    groups: []
+    priv: []
+    password: '{{ vault_pfsense_secrets[''user/vpn-benedict/password''] }}'
+  - name: vpn-pieric
+    descr: ''
+    scope: user
+    uid: '2001'
+    groups: []
+    priv: []
+    password: '{{ vault_pfsense_secrets[''user/vpn-pieric/password''] }}'
+  openvpn_servers:
+  - name: infra-vpn
+    mode: server_tls
+    protocol: UDP4
+    dev_mode: tun
+    interface: wan
+    local_port: 1194
+    ca: infra-ca
+    cert: infra-vpn-server
+    cert_depth: 1
+    remote_cert_tls: false
+    dh_length: 2048
+    ecdh_curve: none
+    digest: SHA256
+    data_ciphers:
+    - AES-256-GCM
+    - AES-128-GCM
+    - CHACHA20-POLY1305
+    data_ciphers_fallback: AES-256-CBC
+    tunnel_network: 10.100.0.0/24
+    local_network: 10.1.240.0/24,10.1.10.0/24,10.1.20.21/32,10.1.20.22/32, 10.1.255.2/32
+    topology: subnet
+    maxclients: 3
+    allow_compression: 'no'
+    dns_domain: cloud-1.fun
+    dns_server1: 10.1.240.31
+    username_as_common_name: false
+    exit_notify: '1'
+    create_gw: both
+    verbosity_level: 1
+    keepalive_interval: 10
+    keepalive_timeout: 60
+    inactive_seconds: 300
+    custom_options: ''
+    tls: '{{ vault_pfsense_secrets[''openvpn/infra-vpn/tls''] }}'
+    tls_type: auth
+  interfaces:
+  - descr: WAN
+    interface: igc0
+    enable: true
+    ipv4_type: static
+    ipv6_type: none
+    blockpriv: true
+    blockbogons: true
+    ipv4_address: 185.25.195.189
+    ipv4_prefixlen: 28
+    ipv4_gateway: WANGW
+  - descr: LAN
+    interface: igc1
+    enable: true
+    ipv4_type: static
+    ipv6_type: none
+    blockpriv: false
+    blockbogons: false
+    ipv4_address: 10.1.255.2
+    ipv4_prefixlen: 30
+  - descr: ADMINCONSOLE
+    interface: igc2
+    enable: true
+    ipv4_type: static
+    ipv6_type: none
+    blockpriv: false
+    blockbogons: false
+    ipv4_address: 192.168.99.1
+    ipv4_prefixlen: 24
   dns_resolver:
     state: present
     dnssec: true
@@ -47,8 +172,7 @@ pfsense_resources:
     type: network
     address: 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
     descr: private networks
-    detail: Entry added Tue, 13 Oct 2026 20:45:47 +0200||Entry added Tue, 13 Oct 2026
-      20:45:47 +0200||Entry added Tue, 13 Oct 2026 20:45:47 +0200
+    detail: Entry added Tue, 13 Oct 2026 20:45:47 +0200||Entry added Tue, 13 Oct 2026 20:45:47 +0200||Entry added Tue, 13 Oct 2026 20:45:47 +0200
   - name: WEB_PORTS
     type: port
     address: 80 443

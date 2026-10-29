@@ -20,13 +20,25 @@
     mode: "0600"
   delegate_to: localhost
 
-# Same conversion as the committed host_vars: diff this file against
-# host_vars/<firewall>/pfsense_resources.yml to spot changes made in the web UI.
-- name: Save the pfsense_resources proposal
+# Same conversion as the committed host_vars: diff these files against
+# host_vars/<firewall>/ to spot changes made in the web UI. Secrets are split
+# out (references in pfsense_resources.yml, values in vault_secrets.yml, to be
+# encrypted as host_vars/<firewall>/vault.yml).
+- name: Save the pfsense_resources proposal (secrets as vault references)
   ansible.builtin.copy:
     content: >-
       {{ {'pfsense_resources': lookup('ansible.builtin.file', pfsense_snapshot_dir ~ '/config.xml')
-         | pfsense_resources_from_config} | to_nice_yaml(indent=2, sort_keys=false) }}
+         | pfsense_resources_with_refs} | to_nice_yaml(indent=2, sort_keys=false, width=4096) }}
     dest: "{{ pfsense_snapshot_dir }}/pfsense_resources.yml"
     mode: "0600"
   delegate_to: localhost
+
+- name: Save the secrets proposal (plain text, gitignored)
+  ansible.builtin.copy:
+    content: >-
+      {{ {'vault_pfsense_secrets': lookup('ansible.builtin.file', pfsense_snapshot_dir ~ '/config.xml')
+         | pfsense_secrets_from_config} | to_nice_yaml(indent=2, width=4096) }}
+    dest: "{{ pfsense_snapshot_dir }}/vault_secrets.yml"
+    mode: "0600"
+  delegate_to: localhost
+  no_log: true

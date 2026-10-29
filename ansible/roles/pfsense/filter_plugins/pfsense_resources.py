@@ -2,6 +2,7 @@
 # format (pfsensible.core pfsense_aggregate), so the conversion is versioned
 # and reproducible.
 
+import base64
 import xml.etree.ElementTree as ET
 
 # config.xml keywords for interface addresses -> pfsensible syntax.
@@ -28,7 +29,24 @@ def _address(endpoint):
     return prefix + value, endpoint.findtext("port")
 
 
-def pfsense_resources_from_config(config_xml):
+def _secret(secrets, key, value):
+    """Keep the value aside and return a reference to the vault variable."""
+    if secrets is None:
+        return value
+    secrets[key] = value
+    return "{{ vault_pfsense_secrets['%s'] }}" % key
+
+
+def _flag(element, tag):
+    """pfSense booleans: tag present (or "enabled") is true, "disabled" false."""
+    node = element.find(tag)
+    return node is not None and (node.text or "").strip() != "disabled"
+
+
+def pfsense_resources_from_config(config_xml, secrets=None):
+    """config.xml -> pfsense_resources. With a dict as secrets, keys,
+    certificates, password hashes and TLS keys are moved into it and replaced
+    by references to vault_pfsense_secrets."""
     root = ET.fromstring(config_xml)
     aliases = []
     for alias in root.findall("./aliases/alias"):
@@ -172,8 +190,133 @@ def pfsense_resources_from_config(config_xml):
             "range_to": iface.findtext("range/to"),
         })
 
+    interfaces = []
+    for iface in root.find("interfaces"):
+        entry = {
+            "descr": iface.findtext("descr") or iface.tag.upper(),
+            "interface": iface.findtext("if"),
+            "enable": iface.find("enable") is not None,
+            # Only static IPv4 here; no IPv6 address is configured (the LAN
+            # track6 keys are leftovers without address).
+            "ipv4_type": "static" if iface.findtext("ipaddr") else "none",
+            "ipv6_type": "none",
+            "blockpriv": iface.find("blockpriv") is not None,
+            "blockbogons": iface.find("blockbogons") is not None,
+        }
+        if iface.findtext("ipaddr"):
+            entry["ipv4_address"] = iface.findtext("ipaddr")
+            entry["ipv4_prefixlen"] = int(iface.findtext("subnet"))
+        if iface.findtext("gateway"):
+            entry["ipv4_gateway"] = iface.findtext("gateway")
+        if iface.findtext("mtu"):
+            entry["mtu"] = int(iface.findtext("mtu"))
+        interfaces.append(entry)
+
+    refs = {ca.findtext("refid"): ca.findtext("descr") for ca in root.findall("./ca")}
+    refs.update({cert.findtext("refid"): cert.findtext("descr") for cert in root.findall("./cert")})
+
+    cas = []
+    for ca in root.findall("./ca"):
+        name = ca.findtext("descr")
+        cas.append({
+            "name": name,
+            "trust": _flag(ca, "trust"),
+            "randomserial": _flag(ca, "randomserial"),
+            "certificate": _secret(secrets, "ca/%s/crt" % name, ca.findtext("crt")),
+            "key": _secret(secrets, "ca/%s/key" % name, ca.findtext("prv")),
+        })
+
+    certs = []
+    for cert in root.findall("./cert"):
+        # Self-signed certificates (the web UI one, generated and renewed by
+        # pfSense itself on install) have no CA and cannot be managed by
+        # pfsense_cert: left to pfSense.
+        if not cert.findtext("caref"):
+            continue
+        name = cert.findtext("descr")
+        entry = {
+            "name": name,
+            "certtype": cert.findtext("type") or "user",
+            "certificate": _secret(secrets, "cert/%s/crt" % name, cert.findtext("crt")),
+            "key": _secret(secrets, "cert/%s/key" % name, cert.findtext("prv")),
+        }
+        if cert.findtext("caref"):
+            entry["ca"] = refs[cert.findtext("caref")]
+        certs.append(entry)
+
+    users = []
+    for user in root.findall("./system/user"):
+        name = user.findtext("name")
+        groups = [g.findtext("name") for g in root.findall("./system/group")
+                  if user.findtext("uid") in [m.text for m in g.findall("member")]]
+        entry = {
+            "name": name,
+            "descr": user.findtext("descr") or "",
+            "scope": user.findtext("scope") or "user",
+            "uid": user.findtext("uid"),
+            "groups": groups,
+            "priv": [p.text for p in user.findall("priv")],
+            "password": _secret(secrets, "user/%s/password" % name, user.findtext("bcrypt-hash")),
+        }
+        keys = base64.b64decode(user.findtext("authorizedkeys") or "").decode()
+        if keys:
+            entry["authorizedkeys"] = keys
+        if user.find("disabled") is not None:
+            entry["disabled"] = True
+        users.append(entry)
+
+    openvpn_servers = []
+    for server in root.findall("./openvpn/openvpn-server"):
+        name = server.findtext("description")
+        text = lambda tag: server.findtext(tag) or ""  # noqa: E731
+        entry = {
+            "name": name,
+            "mode": text("mode"),
+            "protocol": text("protocol"),
+            "dev_mode": text("dev_mode"),
+            "interface": text("interface"),
+            "local_port": int(text("local_port")),
+            "ca": refs.get(text("caref"), ""),
+            "cert": refs.get(text("certref"), ""),
+            "cert_depth": int(text("cert_depth") or 1),
+            "remote_cert_tls": _flag(server, "remote_cert_tls") and bool(text("remote_cert_tls")),
+            "dh_length": int(text("dh_length")),
+            "ecdh_curve": text("ecdh_curve"),
+            "digest": text("digest"),
+            "data_ciphers": [c for c in text("data_ciphers").split(",") if c],
+            "data_ciphers_fallback": text("data_ciphers_fallback"),
+            "tunnel_network": text("tunnel_network"),
+            "local_network": text("local_network"),
+            "topology": text("topology"),
+            "maxclients": int(text("maxclients") or 0),
+            "allow_compression": text("allow_compression"),
+            "dns_domain": text("dns_domain"),
+            "dns_server1": text("dns_server1"),
+            "username_as_common_name": text("username_as_common_name") == "enabled",
+            "exit_notify": text("exit_notify"),
+            "create_gw": text("create_gw"),
+            "verbosity_level": int(text("verbosity_level") or 1),
+            "keepalive_interval": int(text("keepalive_interval") or 10),
+            "keepalive_timeout": int(text("keepalive_timeout") or 60),
+            "inactive_seconds": int(text("inactive_seconds") or 0),
+            "custom_options": text("custom_options"),
+        }
+        if "tls" in entry["mode"] and text("tls"):
+            # Stored with CRLF line endings when pasted from a browser:
+            # pfsensible only recognises the key with LF endings.
+            tls_key = base64.b64decode(text("tls")).decode().replace("\r\n", "\n")
+            tls_key = base64.b64encode(tls_key.encode()).decode()
+            entry["tls"] = _secret(secrets, "openvpn/%s/tls" % name, tls_key)
+            entry["tls_type"] = text("tls_type")
+        openvpn_servers.append(entry)
+
     return {
         "setup": setup,
+        "cas": cas,
+        "certs": certs,
+        "users": users,
+        "openvpn_servers": openvpn_servers,
+        "interfaces": interfaces,
         "dns_resolver": dns_resolver,
         "dhcp_servers": dhcp_servers,
         "aliases": aliases,
@@ -185,6 +328,22 @@ def pfsense_resources_from_config(config_xml):
     }
 
 
+def pfsense_resources_with_refs(config_xml):
+    """pfsense_resources with every secret replaced by a vault reference."""
+    return pfsense_resources_from_config(config_xml, secrets={})
+
+
+def pfsense_secrets_from_config(config_xml):
+    """The secrets matching pfsense_resources_with_refs (for vault.yml)."""
+    secrets = {}
+    pfsense_resources_from_config(config_xml, secrets=secrets)
+    return secrets
+
+
 class FilterModule:
     def filters(self):
-        return {"pfsense_resources_from_config": pfsense_resources_from_config}
+        return {
+            "pfsense_resources_from_config": pfsense_resources_from_config,
+            "pfsense_secrets_from_config": pfsense_secrets_from_config,
+            "pfsense_resources_with_refs": pfsense_resources_with_refs,
+        }

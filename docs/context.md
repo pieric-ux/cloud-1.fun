@@ -541,6 +541,25 @@ le vault) pour savoir reconstruire, puis `pfsensible.core` objet par objet
   `apply.yml`** : config live vs dernier backup versionné (via le filtre) →
   arrêt si différent ; testé dans les deux sens. Backup rafraîchi
   automatiquement après un apply réel. À terme : `purge_rules`.
+- **Interfaces + OpenVPN + CA/certs/users as code (2026-10-29)** : toute la
+  config de pfSense est modélisée. Secrets (clés et certificats de la CA et
+  des 4 certificats, hash bcrypt des 4 utilisateurs, clé TLS OpenVPN) dans
+  `host_vars/pfsense/vault.yml` (`vault_pfsense_secrets`), références dans
+  `pfsense_resources.yml` ; la snapshot écrit les deux propositions. Hors
+  code : certificat autosigné de l'UI (pas de CA), lien user↔cert (option
+  absente du module), SNMP/syslog/cron/paquets (backup). `--check` : 0 sur
+  tout sauf **LAN** (balises vides `gateway`/`ipaddrv6`/`subnetv6`/
+  `gatewayv6` à retirer) et **OpenVPN** (`ncp_enable` explicite,
+  `remote_cert_tls` vide retiré, clé TLS CRLF → LF) : sans effet mais
+  reconfigure `igc1` (transit) et redémarre OpenVPN → **appliqué sur place
+  le 2026-10-29** (laptop sur MGMT `10.1.240.108`, SSH tenu), puis `--check`
+  = **0 sur toute la config**, proposition = host_vars, secrets = vault.
+- ⚠️ **Fuite de la clé TLS OpenVPN (2026-10-29)** : `pfsense_openvpn_server`
+  l'affiche dans ses messages d'erreur (clé en CRLF refusée) → apparue dans
+  la session Claude et dans `ansible.log` (nettoyé). `no_log` ajouté sur les
+  tâches à secrets (`pfsense_hide_secrets`). **Régénérer la clé TLS**
+  recommandé (tls-auth : protège l'accès au serveur, ne déchiffre pas le
+  trafic) puis redistribuer les configs clientes, backup, régénérer le vault.
 
 ## Où on en est / prochaine étape
 

@@ -43,15 +43,47 @@
       then apply again (or -e pfsense_ignore_drift=true if intended).
     quiet: true
 
-- name: Aliases, NAT port forwards and filter rules
+- name: Interfaces, aliases, NAT port forwards and filter rules
   pfsensible.core.pfsense_aggregate:
+    aggregated_interfaces: "{{ pfsense_resources.interfaces }}"
     aggregated_aliases: "{{ pfsense_resources.aliases }}"
     aggregated_nat_port_forwards: "{{ pfsense_resources.nat_port_forwards }}"
     aggregated_rules: "{{ pfsense_resources.rules }}"
     order_rules: true
+    purge_interfaces: false
     purge_aliases: false
     purge_nat_port_forwards: false
     purge_rules: false
+
+# Certificates before what uses them: CA, then certificates, then the users
+# and the OpenVPN server referring to them. Secrets come from the vault.
+- name: Certificate authorities
+  pfsensible.core.pfsense_ca: "{{ item }}"
+  loop: "{{ pfsense_resources.cas }}"
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: "{{ pfsense_hide_secrets | bool }}"
+
+- name: Certificates
+  pfsensible.core.pfsense_cert: "{{ item }}"
+  loop: "{{ pfsense_resources.certs }}"
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: "{{ pfsense_hide_secrets | bool }}"
+
+- name: Users
+  pfsensible.core.pfsense_user: "{{ item }}"
+  loop: "{{ pfsense_resources.users }}"
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: "{{ pfsense_hide_secrets | bool }}"
+
+- name: OpenVPN servers
+  pfsensible.core.pfsense_openvpn_server: "{{ item }}"
+  loop: "{{ pfsense_resources.openvpn_servers }}"
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: "{{ pfsense_hide_secrets | bool }}"
 
 - name: Gateways
   pfsensible.core.pfsense_gateway: "{{ item }}"

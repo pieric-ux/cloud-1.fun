@@ -9,7 +9,7 @@ with the Python shipped by pfSense.
 |---|---|---|
 | `snapshot.yml` (default, `main.yml`) | copies `/cf/conf/config.xml` to `pfsense_snapshot_dir` (gitignored) and writes a `pfsense_resources.yml` proposal to diff against the host_vars | none |
 | `backup.yml` | snapshot, then stores it vault-encrypted in `pfsense_config_vault` (versioned); rewritten only when the config changed | none on pfSense |
-| `apply.yml` | pushes `host_vars/<firewall>/pfsense_resources.yml`: aliases, NAT port forwards and filter rules with `pfsense_aggregate` (rules in list order, nothing purged), then gateways, default gateway, static routes, system settings, DNS resolver and DHCP servers; starts with a drift guard, refreshes the backup after a real run; real run refused unless `pfsense_apply_confirm=true` | changes pfSense |
+| `apply.yml` | pushes `host_vars/<firewall>/pfsense_resources.yml`: aliases, NAT port forwards and filter rules with `pfsense_aggregate` (rules in list order, nothing purged), then certificate authorities, certificates, users, OpenVPN servers, gateways, default gateway, static routes, system settings, DNS resolver and DHCP servers; starts with a drift guard, refreshes the backup after a real run; real run refused unless `pfsense_apply_confirm=true` | changes pfSense |
 | `restore.yml` | pushes the versioned config, drops `/tmp/config.cache`, reboots | **overwrites the config, reboots the gateway and VPN** |
 
 `restore.yml` refuses to run unless `pfsense_restore_confirm=true`.
@@ -27,6 +27,27 @@ evaluation order (first match wins), NAT port forwards, gateways, default
 gateway, static routes. Rules attached to a NAT port forward are not in
 `rules`: `associated_rule: associated` makes them follow their port forward. pfsensible identifies a rule by name +
 interface: rule descriptions must stay unique per interface.
+
+## Secrets
+
+Keys, certificates, password hashes and the OpenVPN TLS key live in
+`host_vars/<firewall>/vault.yml` (ansible-vault) as `vault_pfsense_secrets`;
+`pfsense_resources.yml` only holds references. The snapshot writes both
+proposals: `pfsense_resources.yml` (references) and `vault_secrets.yml`
+(plain text, gitignored, 0600) to encrypt as the new `vault.yml`.
+
+Tasks handling secrets run with `no_log` (`pfsense_hide_secrets`, default
+true): `pfsense_openvpn_server` echoes the TLS key in its error messages.
+
+Not managed, on purpose:
+- the self-signed web UI certificate (no CA, generated and renewed by pfSense
+  on install; `pfsense_cert` requires a CA);
+- the user <-> certificate link (`pfsense_user` has no such option; VPN
+  authentication is certificate based on the client side);
+- SNMP, syslog, NTP server, cron, packages: covered by the encrypted backup.
+
+The OpenVPN TLS key was stored with CRLF line endings (pasted from a browser):
+the filter normalises it to LF, which pfsensible requires.
 
 ## Drift guard
 
@@ -51,8 +72,7 @@ so it stays the reference.
 
 ## Next steps
 
-Interfaces, then OpenVPN (CA, certs, users, private keys in the vault) last.
-Later, once everything is modelled: `purge_rules` / `purge_aliases` so the
+Everything is modelled. Later: `purge_rules` / `purge_aliases` so the
 web UI stops being a source of configuration (group decision). Outbound NAT is in automatic mode: no
 rule to model.
 The backup stays as the safety net.

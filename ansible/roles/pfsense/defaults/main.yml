@@ -21,3 +21,7 @@ pfsense_apply_confirm: false
 # Apply stops when the live pfSense differs from the last versioned backup
 # (change made outside the code). Set to true only when that change is known.
 pfsense_ignore_drift: false
+
+# Hide task output of the CA, certificate, user and OpenVPN tasks: modules may
+# echo keys in their error messages. false only to debug, never in logs kept.
+pfsense_hide_secrets: true
