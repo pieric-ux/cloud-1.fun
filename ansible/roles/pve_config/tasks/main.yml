@@ -1,8 +1,8 @@
 ---
-# DRAFT, NOT VALIDATED: written from the piscine module 03 docs, never run.
-# Read the live config first (docs/context.md, "relevé des Proxmox"), then
-# preview with --check --diff. Cluster join and storage are cluster-wide
-# operations: see cluster.yml and storage.yml.
+# Checked against the live nodes on 2026-10-30 (--check --diff, no change
+# besides "Enabled: no" -> "false" on pve01). Always preview with
+# --check --diff first. Cluster join and storage are cluster-wide
+# operations: see cluster.yml and storage.yml (not imported, not validated).
 - name: Refuse a real run without explicit confirmation
   ansible.builtin.assert:
     that: ansible_check_mode or (pve_config_confirm | bool)

@@ -714,7 +714,7 @@ indentées ou non (fichiers générés), vaults ignorés (chiffrés). `make lint
 - Après une réinstallation, le nœud doit **retrouver son IQN iSCSI** (le
   masking du NAS refuse tout autre initiateur) et **rejoindre le cluster**
   (`INFRA-CLUSTER`, qdevice `qdevice03` `10.1.240.13`) : rôle `pve_config`
-  (brouillon) + procédure manuelle de re-join dans `tasks/cluster.yml`.
+  (validé en --check le 2026-10-30) + procédure manuelle de re-join dans `tasks/cluster.yml`.
 
 ### Reprise suggérée pour la nouvelle session
 0. **Pause du 2026-10-28 soir — où on s'est arrêté :**
@@ -741,7 +741,7 @@ indentées ou non (fichiers générés), vaults ignorés (chiffrés). `make lint
      renvoyé 401 (`NoValidSession`) : le mot de passe d'`admin_yuumi` dans
      le vault ne correspondait plus à l'iLO ; `vault.yml` (baremetal) mis à
      jour par pieric, probe OK ensuite.
-   - **Rôle `pve_config` (brouillon, jamais lancé)** écrit d'après la doc
+   - **Rôle `pve_config`** (validé en `--check --diff` sur la prod le 2026-10-30, CHAP dans `group_vars/pve/vault.yml`) écrit d'après la doc
      du module 03 : dépôts, /etc/hosts, NTP, IQN iSCSI enregistré, CHAP,
      multipath, stockages cluster ; tag `never, pve-config` dans
      `10-bootstrap.yml`. À valider après le relevé réel des nœuds (bloqué

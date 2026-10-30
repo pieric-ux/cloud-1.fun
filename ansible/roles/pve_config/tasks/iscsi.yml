@@ -1,12 +1,15 @@
 ---
 # The NAS target only accepts known initiator IQNs (masking, default: no
 # access): a reinstalled node must get its recorded IQN back, otherwise its
-# login is refused even with the right CHAP secret.
+# login is refused even with the right CHAP secret. Only the InitiatorName
+# line is managed: rewriting the whole file would restart iscsid for nothing.
 - name: Initiator name (recorded IQN, allowed on the NAS target)
-  ansible.builtin.copy:
-    dest: /etc/iscsi/initiatorname.iscsi
+  ansible.builtin.lineinfile:
+    path: /etc/iscsi/initiatorname.iscsi
+    regexp: '^InitiatorName='
+    line: "InitiatorName={{ pve_iscsi_initiator_name }}"
+    create: true
     mode: "0600"
-    content: "InitiatorName={{ pve_iscsi_initiator_name }}\n"
   notify: Restart iscsid
 
 # CHAP lives in iscsid.conf: the Proxmox storage has no CHAP field.
@@ -46,5 +49,5 @@
     path: /etc/multipath/wwids
     line: "/{{ pve_iscsi_lun_wwid }}/"
     create: true
-    mode: "0644"
+    mode: "0600"
   notify: Reload multipathd

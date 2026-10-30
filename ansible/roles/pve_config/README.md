@@ -1,8 +1,10 @@
 # pve_config
 
 Proxmox VE node configuration after an install: what a fresh node does not
-have. **DRAFT, NOT VALIDATED**: written from the piscine module 03 docs, never
-run. Read the live nodes first, then preview with `--check --diff`.
+have. **Checked against the live nodes on 2026-10-30** (`--check --diff`, no
+real run yet): repos, system and iSCSI match production (only `Enabled: no`
+→ `false` on pve01, same meaning). Cluster join and storages (`cluster.yml`,
+`storage.yml`) are not imported by `main.yml` and not validated.
 
 ## Tasks
 
@@ -20,7 +22,7 @@ a time (`serial: 1`).
 
 ## Variables
 
-`group_vars/pve.yml` (iSCSI target, LUN WWID, storages, cluster name,
+`group_vars/pve/vars.yml` (iSCSI target, LUN WWID, storages, cluster name,
 qdevice), `host_vars/pveXX.yml` (`pve_iscsi_initiator_name`). The CHAP secret
 (`vault_pve_iscsi_chap_password`) still has to be added to a vault.
 

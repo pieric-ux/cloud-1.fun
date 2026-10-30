@@ -4,7 +4,7 @@
 #   --tags media-test  mount/eject the stock ISO, no boot change, no reboot
 #   --tags build-iso   build the auto-install ISO per host (local, Docker)
 #   --tags install     DESTRUCTIVE reinstall, needs -e pve_install_confirm=true
-#   --tags pve-config  configure the Proxmox nodes (DRAFT, not validated yet),
+#   --tags pve-config  configure the Proxmox nodes (checked live 2026-10-30),
 #                      preview with --check --diff, needs -e pve_config_confirm=true
 
 - name: Bare-metal hosts through the BMC (probe, media test, ISO build)
@@ -67,8 +67,8 @@
         name: redfish_bootstrap
         tasks_from: install
 
-# Proxmox node configuration after an install (DRAFT, not validated: read the
-# live nodes first). Over SSH, unlike the plays above.
+# Proxmox node configuration after an install (checked with --check --diff
+# against the live nodes on 2026-10-30). Over SSH, unlike the plays above.
 - name: Configure the Proxmox nodes
   hosts: pve
   become: true

@@ -83,7 +83,7 @@ install: ## DESTRUCTIVE: reinstall Proxmox on one node (HOST=, CONFIRM=yes)
 	$(call need_confirm,$(HOST): its system disk is wiped)
 	$(PLAYBOOK) 10-bootstrap.yml --tags install --limit $(HOST) -e pve_install_confirm=true
 
-pve-config-check: ## Preview the Proxmox node configuration (DRAFT, no change)
+pve-config-check: ## Preview the Proxmox node configuration (no change)
 	$(PLAYBOOK) 10-bootstrap.yml --tags pve-config --check --diff
 
 # --- 20 proxmox: guests with Terraform (read-only for now) ------------------

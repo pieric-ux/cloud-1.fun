@@ -1,12 +1,12 @@
 ---
 # Proxmox VE node configuration (role pve_config). Values from the piscine
 # module 03 docs (cluster_setup, iscsi_setup, proxmox_integration,
-# backup_restore): to check against the live nodes before any run.
+# backup_restore), checked against the live nodes on 2026-10-30.
 pve_fqdn: "{{ inventory_hostname }}.cloud-1.fun"
 
 # iSCSI target on the Synology (one-way CHAP, masking by initiator IQN).
 pve_iscsi_chap_user: pveiscsi
-# Secret in the team password manager: to add to a vault (not in the repo yet).
+# Secret in group_vars/pve/vault.yml (copy of the team password manager).
 pve_iscsi_chap_password: "{{ vault_pve_iscsi_chap_password }}"
 pve_iscsi_lun_wwid: 360014051fae838bdedf5d4c82d85dadd
 pve_iscsi_multipath_alias: mpath-synology
