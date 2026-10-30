@@ -5,7 +5,7 @@
 [global]
 keyboard = {{ pve_install_keyboard | to_json }}
 country = {{ pve_install_country | to_json }}
-fqdn = {{ ansible_host | to_json }}
+fqdn = {{ pve_fqdn | to_json }}
 mailto = {{ pve_install_mailto | to_json }}
 timezone = {{ pve_install_timezone | to_json }}
 root-password-hashed = {{ pve_install_root_password_hash | to_json }}
