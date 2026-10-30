@@ -1,0 +1,83 @@
+---
+# Proxmox Backup Server of the rack (role pbs_config): VM 2400 on the
+# local-lvm of pve02, values checked against the live VM on 2026-10-30.
+pbs_address: 10.1.240.30
+pbs_fqdn: pbs.cloud-1.fun
+
+# Package repositories: no subscription key, enterprise disabled.
+pbs_repo_suite: trixie
+pbs_repo_component: pbs-no-subscription
+# Time: pfSense is the only NTP source of the rack.
+pbs_ntp_servers: [10.1.255.2]
+
+# Config objects, through the API (proxmox-backup-debug api): created when
+# missing, the differing options updated on the existing ones. `secrets`
+# gives, per API option, the NAME of its vault variable (creation only).
+# Datastore: its path must already be the mounted data disk (sdb, ext4).
+pbs_datastores:
+  - id: store1
+    options:
+      path: /mnt/datastore/store1
+      gc-schedule: "04:00"
+
+pbs_users:
+  - id: pve@pbs
+    options:
+      comment: PVE cluster backups
+
+# API tokens. A new token gets a random secret: token.shadow (hashed secrets,
+# vault_pbs_token_shadow) is then restored, so the PVE side
+# (vault_pve_pbs_store1_token) keeps working unchanged.
+pbs_tokens:
+  - user: pve@pbs
+    name: pve-cluster
+
+pbs_acls:
+  - {path: /datastore/store1, role: DatastoreBackup, auth-id: pve@pbs}
+  - {path: /datastore/store1, role: DatastoreBackup, auth-id: "pve@pbs!pve-cluster"}
+
+pbs_prune_jobs:
+  - id: store1-daily
+    options:
+      store: store1
+      schedule: "03:00"
+      keep-daily: 7
+      keep-weekly: 4
+      keep-monthly: 3
+
+pbs_verify_jobs:
+  - id: store1-weekly
+    options:
+      store: store1
+      schedule: sun 05:00
+      ignore-verified: true
+      outdated-after: 30
+
+# Offsite copy (PBS at Infomaniak), pushed encrypted with offsite-key: the
+# SAME key as the pbs-offsite storage of the cluster (fingerprint below).
+pbs_encryption_keys:
+  - id: offsite-key
+    fingerprint: dd:14:bc:b8:6f:89:c2:2d:41:a3:d2:63:0e:1f:b1:c5:e8:96:cf:82:76:2e:84:28:a8:91:c0:36:d9:71:85:85
+    var: vault_pbs_offsite_key
+
+pbs_remotes:
+  - id: offsite
+    options:
+      host: 195.15.202.63
+      auth-id: sync-push@pbs!rack
+      fingerprint: b0:e4:94:55:b8:db:14:71:91:1f:6a:e2:bd:1a:23:c0:35:99:9e:e6:65:6a:32:be:a5:41:86:cc:8e:c6:4c:40
+      comment: Off-site PBS (Infomaniak)
+    secrets:
+      - {option: password, var: vault_pbs_remote_offsite_password}
+
+pbs_sync_jobs:
+  - id: offsite-push
+    options:
+      sync-direction: push
+      store: store1
+      remote: offsite
+      remote-store: offsite1
+      schedule: "05:30"
+      active-encryption-key: offsite-key
+      rate-out: 20 MB
+      comment: Off-site copy, encrypted on the fly

@@ -1,0 +1,54 @@
+---
+# Encryption keys of the push sync jobs. Imported from the vault when
+# missing; an existing key must have the recorded fingerprint, and the
+# vault copy must be the file the server uses (checksum, never read back).
+- name: Read the encryption keys
+  ansible.builtin.command: proxmox-backup-debug api get /config/encryption-keys --output-format json
+  register: pbs_key_status
+  changed_when: false
+  check_mode: false
+
+- name: Encryption keys to import
+  ansible.builtin.debug:
+    msg: "{{ pbs_keys_missing | map(attribute='id') | list }}"
+  changed_when: true
+  when: pbs_keys_missing | length > 0
+
+- name: Import the missing encryption keys
+  ansible.builtin.command:
+    argv: [proxmox-backup-debug, api, create, /config/encryption-keys, --id, "{{ item.id }}", --key, "{{ query('vars', item.var) | first }}"]
+  changed_when: true
+  loop: "{{ pbs_keys_missing }}"
+  loop_control:
+    label: "{{ item.id }}"
+  no_log: true
+  when: not ansible_check_mode
+
+- name: Encryption keys have the recorded fingerprint
+  ansible.builtin.assert:
+    that: (pbs_key_status.stdout | from_json | selectattr('id', '==', item.id) | first).fingerprint == item.fingerprint
+    fail_msg: "{{ item.id }} on the server is not the recorded key"
+    quiet: true
+  loop: "{{ pbs_encryption_keys | rejectattr('id', 'in', pbs_keys_missing | map(attribute='id')) }}"
+  loop_control:
+    label: "{{ item.id }}"
+
+- name: Read the key files (checksum only)
+  ansible.builtin.stat:
+    path: "/etc/proxmox-backup/encryption-keys/{{ item.id }}.enc"
+    checksum_algorithm: sha256
+    get_mime: false
+  register: pbs_key_files
+  loop: "{{ pbs_encryption_keys }}"
+  loop_control:
+    label: "{{ item.id }}"
+
+- name: Vault keys match the server
+  ansible.builtin.assert:
+    that: item.stat.checksum == (query('vars', item.item.var) | first | hash('sha256'))
+    fail_msg: "{{ item.item.var }} differs from the key file on the server"
+    quiet: true
+  loop: "{{ pbs_key_files.results }}"
+  loop_control:
+    label: "{{ item.item.id }}"
+  when: item.stat.exists

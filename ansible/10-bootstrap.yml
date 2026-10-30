@@ -6,6 +6,8 @@
 #   --tags install     DESTRUCTIVE reinstall, needs -e pve_install_confirm=true
 #   --tags pve-config  configure the Proxmox nodes (checked live 2026-10-30),
 #                      preview with --check --diff, needs -e pve_config_confirm=true
+#   --tags pbs-config  configure the Proxmox Backup Server (VM 2400), same
+#                      preview, needs -e pbs_config_confirm=true
 
 - name: Bare-metal hosts through the BMC (probe, media test, ISO build)
   hosts: baremetal
@@ -81,3 +83,17 @@
     - name: Node configuration
       ansible.builtin.import_role:
         name: pve_config
+
+# Proxmox Backup Server (VM 2400 on pve02), once the VM is installed: the
+# backups of every other guest go through it (checked with --check --diff
+# against the live VM on 2026-10-30).
+- name: Configure the Proxmox Backup Server
+  hosts: backup
+  become: true
+  gather_facts: false
+  tags: [never, pbs-config]
+
+  tasks:
+    - name: Backup server configuration
+      ansible.builtin.import_role:
+        name: pbs_config

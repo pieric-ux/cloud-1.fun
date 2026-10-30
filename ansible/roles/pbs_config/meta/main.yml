@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  author: pieric
+  description: Proxmox Backup Server configuration (repos, time, datastore, access, jobs, offsite sync)
+  license: MIT
+  min_ansible_version: "2.17"
+dependencies: []

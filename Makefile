@@ -26,7 +26,7 @@ endef
 .DEFAULT_GOAL := help
 .PHONY: help preflight lint \
 	network network-check network-apply pfsense-backup \
-	bootstrap iso media-test serve-iso install pve-config-check \
+	bootstrap iso media-test serve-iso install pve-config-check pbs-config-check \
 	vms-init vms-plan \
 	config-check config
 
@@ -85,6 +85,9 @@ install: ## DESTRUCTIVE: reinstall Proxmox on one node (HOST=, CONFIRM=yes)
 
 pve-config-check: ## Preview the Proxmox node configuration (no change)
 	$(PLAYBOOK) 10-bootstrap.yml --tags pve-config --check --diff
+
+pbs-config-check: ## Preview the Proxmox Backup Server configuration (no change)
+	$(PLAYBOOK) 10-bootstrap.yml --tags pbs-config --check --diff
 
 # --- 20 proxmox: guests with Terraform (read-only for now) ------------------
 

@@ -1,0 +1,94 @@
+---
+# Checked against the live PBS on 2026-10-30 (--check --diff). Always preview
+# with --check --diff first. Order of a fresh install: datastore, access,
+# jobs, then the offsite copy (key, remote, sync job).
+- name: Refuse a real run without explicit confirmation
+  ansible.builtin.assert:
+    that: ansible_check_mode or (pbs_config_confirm | bool)
+    fail_msg: >-
+      Real change on {{ inventory_hostname }}: preview with --check --diff,
+      then re-run with -e pbs_config_confirm=true.
+
+- name: Package repositories
+  ansible.builtin.import_tasks: repos.yml
+
+- name: Name resolution and time
+  ansible.builtin.import_tasks: system.yml
+
+# A datastore created on the root filesystem would fill it: the data disk
+# (sdb, ext4) must be mounted first.
+- name: Datastore paths are mounted disks
+  ansible.builtin.command: "findmnt --noheadings --mountpoint {{ item.options.path }}"
+  changed_when: false
+  check_mode: false
+  loop: "{{ pbs_datastores }}"
+  loop_control:
+    label: "{{ item.id }}"
+
+- name: Datastores
+  ansible.builtin.include_tasks:
+    file: objects.yml
+    apply: {tags: [always]}
+  vars:
+    pbs_object_path: /config/datastore
+    pbs_object_key: name
+    pbs_objects: "{{ pbs_datastores }}"
+
+- name: Users
+  ansible.builtin.include_tasks:
+    file: objects.yml
+    apply: {tags: [always]}
+  vars:
+    pbs_object_path: /access/users
+    pbs_object_key: userid
+    pbs_objects: "{{ pbs_users }}"
+
+- name: API tokens
+  ansible.builtin.import_tasks: tokens.yml
+
+- name: Access rights
+  ansible.builtin.import_tasks: acl.yml
+
+- name: Prune jobs
+  ansible.builtin.include_tasks:
+    file: objects.yml
+    apply: {tags: [always]}
+  vars:
+    pbs_object_path: /config/prune
+    pbs_object_key: id
+    pbs_objects: "{{ pbs_prune_jobs }}"
+
+- name: Verify jobs
+  ansible.builtin.include_tasks:
+    file: objects.yml
+    apply: {tags: [always]}
+  vars:
+    pbs_object_path: /config/verify
+    pbs_object_key: id
+    pbs_objects: "{{ pbs_verify_jobs }}"
+
+- name: Encryption keys
+  ansible.builtin.import_tasks: keys.yml
+
+- name: Remotes
+  ansible.builtin.include_tasks:
+    file: objects.yml
+    apply: {tags: [always]}
+  vars:
+    pbs_object_path: /config/remote
+    pbs_object_key: name
+    pbs_objects: "{{ pbs_remotes }}"
+
+- name: Remote passwords
+  ansible.builtin.import_tasks: remote_secrets.yml
+
+- name: Sync jobs
+  ansible.builtin.include_tasks:
+    file: objects.yml
+    apply: {tags: [always]}
+  vars:
+    pbs_object_path: /config/sync
+    pbs_object_key: id
+    # Push jobs are not listed by default.
+    pbs_object_list_args: [--sync-direction, all]
+    pbs_objects: "{{ pbs_sync_jobs }}"

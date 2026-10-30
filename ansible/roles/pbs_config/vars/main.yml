@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: MIT-0
+---
+# Derived values for objects.yml (lazy: evaluated once the listing exists).
+pbs_objects_live_ids: "{{ pbs_object_status.stdout | from_json | map(attribute=pbs_object_key) | list }}"
+pbs_objects_missing: "{{ pbs_objects | rejectattr('id', 'in', pbs_objects_live_ids) | list }}"
+pbs_objects_present: "{{ pbs_objects | selectattr('id', 'in', pbs_objects_live_ids) | list }}"
+
+# ACL entries ("path|role|auth-id") not on the server yet.
+pbs_acl_live_keys: >-
+  {{ pbs_acl_status.stdout | from_json | map(attribute='path')
+     | zip(pbs_acl_status.stdout | from_json | map(attribute='roleid'),
+           pbs_acl_status.stdout | from_json | map(attribute='ugid'))
+     | map('join', '|') | list }}
+pbs_acls_missing: >-
+  {{ pbs_acls | zip(pbs_acls | map(attribute='path')
+                    | zip(pbs_acls | map(attribute='role'), pbs_acls | map(attribute='auth-id'))
+                    | map('join', '|'))
+     | rejectattr('1', 'in', pbs_acl_live_keys) | map(attribute='0') | list }}
+
+# Encryption keys not imported yet.
+pbs_keys_missing: >-
+  {{ pbs_encryption_keys | rejectattr('id', 'in',
+     pbs_key_status.stdout | from_json | map(attribute='id') | list) | list }}

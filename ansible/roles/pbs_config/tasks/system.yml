@@ -1,0 +1,23 @@
+---
+- name: Own name in /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^\S+\s+{{ pbs_fqdn | regex_escape }}\s'
+    line: "{{ pbs_address }} {{ pbs_fqdn }} {{ pbs_fqdn.split('.')[0] }}"
+
+# The installer keeps the sources in chrony.conf itself (no sources.d file):
+# pfSense only, the Debian pool removed.
+- name: NTP source (pfSense only)
+  ansible.builtin.lineinfile:
+    path: /etc/chrony/chrony.conf
+    regexp: '^server {{ item | regex_escape }}\b'
+    line: "server {{ item }} iburst"
+  loop: "{{ pbs_ntp_servers }}"
+  notify: Restart chrony
+
+- name: No public NTP pool
+  ansible.builtin.lineinfile:
+    path: /etc/chrony/chrony.conf
+    regexp: '^pool\s'
+    state: absent
+  notify: Restart chrony

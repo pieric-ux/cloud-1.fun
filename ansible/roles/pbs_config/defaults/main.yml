@@ -1,0 +1,3 @@
+---
+# A real run (no --check) is refused unless set to true on the command line.
+pbs_config_confirm: false

@@ -1,0 +1,20 @@
+---
+# Enterprise repository needs a subscription key (apt update fails with
+# HTTP 401): disabled. No-subscription repository in deb822 format.
+- name: Disable the enterprise repository
+  ansible.builtin.lineinfile:
+    path: /etc/apt/sources.list.d/pbs-enterprise.sources
+    regexp: '^Enabled:'
+    line: 'Enabled: false'
+    insertafter: EOF
+
+- name: No-subscription repository
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/proxmox.sources
+    mode: "0644"
+    content: |
+      Types: deb
+      URIs: http://download.proxmox.com/debian/pbs
+      Suites: {{ pbs_repo_suite }}
+      Components: {{ pbs_repo_component }}
+      Signed-By: /usr/share/keyrings/proxmox-archive-keyring.gpg

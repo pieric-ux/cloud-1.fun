@@ -1,0 +1,23 @@
+---
+# Access rights: added when missing (an extra entry on the live server is
+# left as is).
+- name: Read the ACL
+  ansible.builtin.command: proxmox-backup-debug api get /access/acl --output-format json
+  register: pbs_acl_status
+  changed_when: false
+  check_mode: false
+
+- name: ACL to add
+  ansible.builtin.debug:
+    msg: "{{ pbs_acls_missing }}"
+  changed_when: true
+  when: pbs_acls_missing | length > 0
+
+- name: Add the missing ACL
+  ansible.builtin.command:
+    argv: [proxmox-backup-debug, api, set, /access/acl, --path, "{{ item.path }}", --role, "{{ item.role }}", --auth-id, "{{ item['auth-id'] }}"]
+  changed_when: true
+  loop: "{{ pbs_acls_missing }}"
+  loop_control:
+    label: "{{ item['auth-id'] }} {{ item.role }} {{ item.path }}"
+  when: not ansible_check_mode

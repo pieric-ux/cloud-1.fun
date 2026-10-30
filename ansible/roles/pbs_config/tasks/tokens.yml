@@ -1,0 +1,38 @@
+---
+# A token created here gets a random secret: token.shadow (the hashed
+# secrets of all tokens) is then restored from the vault, so the clients
+# (the pbs-store1 storage of the cluster) keep their secret.
+- name: Read the API tokens
+  ansible.builtin.command:
+    argv: [proxmox-backup-debug, api, get, "/access/users/{{ item.user }}/token", --output-format, json]
+  register: pbs_token_status
+  changed_when: false
+  check_mode: false
+  # The user may not exist yet (preview of a fresh install).
+  failed_when: false
+  loop: "{{ pbs_tokens }}"
+  loop_control:
+    label: "{{ item.user }}!{{ item.name }}"
+
+- name: Create the missing API tokens
+  ansible.builtin.command:
+    argv: [proxmox-backup-debug, api, create, "/access/users/{{ item.item.user }}/token/{{ item.item.name }}"]
+  changed_when: true
+  loop: "{{ pbs_token_status.results }}"
+  loop_control:
+    label: "{{ item.item.user }}!{{ item.item.name }}"
+  when: >-
+    (item.item.user ~ '!' ~ item.item.name) not in
+    ((item.stdout if item.rc == 0 else '[]') | from_json | map(attribute='tokenid') | list)
+  # Prints the new secret (replaced right after by token.shadow).
+  no_log: true
+
+- name: Hashed token secrets (token.shadow)
+  ansible.builtin.copy:
+    dest: /etc/proxmox-backup/token.shadow
+    content: "{{ vault_pbs_token_shadow }}"
+    owner: backup
+    group: backup
+    mode: "0640"
+  diff: false
+  no_log: true

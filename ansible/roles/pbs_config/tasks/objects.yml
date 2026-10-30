@@ -1,0 +1,67 @@
+---
+# One kind of config object through the API: created when missing, the
+# differing options set on the existing ones (secrets only at creation).
+# From the include: pbs_object_path (API path), pbs_object_key (id field of
+# the listing, id option at creation), pbs_object_list_args, pbs_objects.
+- name: Read {{ pbs_object_path }}
+  ansible.builtin.command:
+    argv: "{{ ['proxmox-backup-debug', 'api', 'get', pbs_object_path, '--output-format', 'json'] + pbs_object_list_args | default([]) }}"
+  register: pbs_object_status
+  changed_when: false
+  check_mode: false
+
+- name: To create in {{ pbs_object_path }}
+  ansible.builtin.debug:
+    msg: "{{ pbs_objects_missing | map(attribute='id') | list }}"
+  changed_when: true
+  when: pbs_objects_missing | length > 0
+
+- name: Create in {{ pbs_object_path }}
+  ansible.builtin.command:
+    argv: >-
+      {{ ['proxmox-backup-debug', 'api', 'create', pbs_object_path, '--' ~ pbs_object_key, item.id]
+         + (pbs_object_options.keys() | map('regex_replace', '^', '--')
+            | zip(pbs_object_options.values() | map('string')) | flatten) }}
+  vars:
+    pbs_object_secrets: "{{ item.secrets | default([]) }}"
+    pbs_object_options: >-
+      {{ item.options | combine(dict(pbs_object_secrets | map(attribute='option')
+         | zip(query('vars', *(pbs_object_secrets | map(attribute='var'))))) ) }}
+  changed_when: true
+  loop: "{{ pbs_objects_missing }}"
+  loop_control:
+    label: "{{ item.id }}"
+  # Secrets (remote password) in the command line.
+  no_log: "{{ pbs_objects_missing | selectattr('secrets', 'defined') | list | length > 0 }}"
+  when: not ansible_check_mode
+
+- name: To update in {{ pbs_object_path }}
+  ansible.builtin.debug:
+    msg: "{{ item.id }}: {{ pbs_object_diff }}"
+  vars: &pbs_object_diff
+    pbs_object_live: "{{ pbs_object_status.stdout | from_json | selectattr(pbs_object_key, '==', item.id) | first }}"
+    # "key=value" pairs of the wanted options missing from the live object.
+    pbs_object_diff: >-
+      {{ dict(item.options.keys() | zip(item.options.values() | map('string')) | map('join', '=')
+         | difference(pbs_object_live.keys() | zip(pbs_object_live.values() | map('string')) | map('join', '='))
+         | map('split', '=', 1)) }}
+  changed_when: true
+  loop: "{{ pbs_objects_present }}"
+  loop_control:
+    label: "{{ item.id }}"
+  when: pbs_object_diff | length > 0
+
+- name: Update in {{ pbs_object_path }}
+  ansible.builtin.command:
+    argv: >-
+      {{ ['proxmox-backup-debug', 'api', 'set', pbs_object_path ~ '/' ~ item.id]
+         + (pbs_object_diff.keys() | map('regex_replace', '^', '--')
+            | zip(pbs_object_diff.values()) | flatten) }}
+  vars: *pbs_object_diff
+  changed_when: true
+  loop: "{{ pbs_objects_present }}"
+  loop_control:
+    label: "{{ item.id }}"
+  when:
+    - pbs_object_diff | length > 0
+    - not ansible_check_mode
