@@ -27,6 +27,7 @@ endef
 .PHONY: help preflight lint \
 	network network-check network-apply pfsense-backup \
 	bootstrap iso media-test serve-iso install pve-config-check pbs-config-check \
+	templates-check templates \
 	vms-init vms-plan \
 	config-check config
 
@@ -88,6 +89,19 @@ pve-config-check: ## Preview the Proxmox node configuration (no change)
 
 pbs-config-check: ## Preview the Proxmox Backup Server configuration (no change)
 	$(PLAYBOOK) 10-bootstrap.yml --tags pbs-config --check --diff
+
+# --- 15 templates: Packer (local install: serves the answer files over HTTP
+# to the VM, on the address of this machine seen from VLAN 240) -------------
+TEMPLATES_DIR := 15-templates
+
+templates-check: ## Validate the Packer templates (local, no API call)
+	cd $(TEMPLATES_DIR) && packer init . && packer fmt -check . \
+		&& packer validate -var-file=templates.pkrvars.example.hcl .
+
+templates: ## Build the VM templates (CONFIRM=yes, needs 15-templates/templates.pkrvars.hcl; ONLY='ubuntu2404.*' for one)
+	$(call need_confirm,the cluster: new template VMs)
+	cd $(TEMPLATES_DIR) && packer build -parallel-builds=1 \
+		-var-file=templates.pkrvars.hcl $(if $(ONLY),-only='$(ONLY)') .
 
 # --- 20 proxmox: guests with Terraform (read-only for now) ------------------
 

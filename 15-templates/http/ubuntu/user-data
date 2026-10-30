@@ -1,0 +1,39 @@
+#cloud-config
+# Ubuntu autoinstall: https://canonical-subiquity.readthedocs-hosted.com/en/latest/reference/autoinstall-reference.html
+autoinstall:
+  version: 1
+  identity:
+    hostname: defaultubuntu2404
+    # Required by the installer; the account is locked at the end (SSH key only).
+    password: $6$ES7XOijhENWAHoMb$oTJABIkt6Af4dhoDKYMsztdMd9WatSSAABX3AyjJUFfP8dWDK/ljyAmBQ/etCw/HGBBsZ9XmHN/PQEi1z6nse0
+    username: ansible
+  kernel:
+    package: linux-virtual
+  locale: en_US.UTF-8
+  source:
+    id: ubuntu-server
+    search_drivers: false
+  ssh:
+    allow-pw: false
+    authorized-keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA/Cw4uZHVC34HkDoiCt/JiE8vdZCXLfGA6qOLsEl3e7 default@infra.fun
+    install-server: true
+  storage:
+    layout:
+      name: direct
+  updates: all
+  packages:
+    - qemu-guest-agent
+    - cloud-init
+    - curl
+    - wget
+    - vim
+    - git
+    - htop
+    - python3
+    - python3-pip
+  late-commands:
+    - echo 'ansible ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/ansible
+    - chmod 440 /target/etc/sudoers.d/ansible
+    - curtin in-target -- visudo -c -f /etc/sudoers.d/ansible
+    - curtin in-target -- passwd -l ansible
