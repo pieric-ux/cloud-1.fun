@@ -675,6 +675,18 @@ blocs `import` (`imports.tf.example`, VMIDs du module 01) + `terraform plan
 `hashicorp/terraform:1.9.8` (`make vms-init` / `make vms-plan`). Token API
 `terraform@pve!iac` à créer (Datacenter > Permissions > API Tokens).
 
+### Existant du repo piscine (relevé 2026-10-30)
+Tout ce qui servira aux couches suivantes est consolidé dans
+**`docs/existant-piscine.md`** : cluster (HA, règles d'affinité, modèle CPU
+Haswell pour la migration), stockage (iSCSI, masking, multipath, NFS ISO),
+inventaire des guests avec VMID/stockage/nœud/HA (pour Terraform), templates
+Packer, supervision infra06 (6 rôles), k3s infra05, et la **copie hors site
+des backups (PBS distant, sync push chiffré : clé de chiffrement
+indispensable pour restaurer)**. Le pbs est sur `local-lvm` de pve02
+**volontairement** (survit à une panne du NAS). Couche 30 : README réels des
+4 rôles d'infra04, chemins `group_vars/all/vars.yml` corrigés,
+`make config-check`.
+
 ### Qualité — ansible-lint (2026-10-29)
 `ansible-lint` 26.10 (pipx, environnement séparé ; collections du venv
 Ansible via `ANSIBLE_COLLECTIONS_PATH`) : 268 remarques → **0, profil

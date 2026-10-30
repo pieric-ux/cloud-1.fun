@@ -227,7 +227,11 @@ Une fois le point zéro fait, dans l'ordre (depuis `ansible/`) :
 4. **Configuration des Proxmox** (cluster, iSCSI `synology-lvm`) : à venir.
 5. **VMs** (`20-proxmox`, Terraform : squelette en lecture seule, import du
    code depuis les VMs réelles à venir) puis **config** (`30-config.yml`).
-6. **Restauration des backups** (PBS : pve02 + copie remote).
+6. **Restauration des backups** (PBS : pve02 + copie hors site). Après un
+   crash total, le PBS du rack est perdu : restaurer depuis le PBS distant
+   `pbs-offsite`, ce qui demande **la clé de chiffrement du sync job** et
+   l'accès au serveur (gestionnaire de mots de passe de l'équipe ; détails
+   dans `docs/existant-piscine.md`).
 
 **Avant l'enchaînement**, vérifier automatiquement les étapes 1 à 7 (lecture
 seule, ne modifie rien) :
