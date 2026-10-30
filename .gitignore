@@ -1,5 +1,7 @@
 ### Ansible ###
 *.retry
+# Local collections cache (created by ansible-lint)
+.ansible/
 
 ### Git ###
 # Created by git for backups. To disable backups in Git:
