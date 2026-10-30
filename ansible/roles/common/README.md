@@ -1,38 +1,25 @@
-Role Name
-=========
+# common
 
-A brief description of the role goes here.
+Base configuration of every VM (layer 30), Debian family and Alpine.
 
-Requirements
-------------
+## What it does
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+| File | Action |
+|---|---|
+| `Debian.yml` / `Alpine.yml` | OS-specific tasks (Debian: apt upgrade `safe`, Ubuntu Pro nag services masked) |
+| `packages.yml` | base packages (`common_packages`) |
+| `timezone.yml` | timezone (`common_timezone`, Europe/Zurich) |
+| `chrony.yml` | chrony with pfSense `10.1.255.2` as only NTP source |
+| `motd.yml` | `/etc/motd` with the hostname and the role of the host |
 
-Role Variables
---------------
+OS-specific values in `vars/<distribution|os_family>.yml` (chrony service
+name, leap seconds zone). Needs facts (`gather_facts` on).
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+## Variables
 
-Dependencies
-------------
-
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
-
-Example Playbook
-----------------
-
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
-
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
-
-License
--------
-
-BSD
-
-Author Information
-------------------
-
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+| Variable | Default | Where it is set |
+|---|---|---|
+| `common_timezone` | `Europe/Zurich` | defaults |
+| `common_ntp_servers` | `[10.1.255.2]` | defaults |
+| `common_packages` | curl, vim, git, htop, jq, python3, net-tools | defaults |
+| `common_motd_role` | `unassigned` | one per group in `inventory/group_vars/<group>.yml` (dns, monitoring, rproxy...) |

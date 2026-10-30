@@ -1,38 +1,27 @@
-Role Name
-=========
+# ssh-hardening
 
-A brief description of the role goes here.
+sshd hardening of every VM (layer 30) through a drop-in, so the
+distribution's `sshd_config` stays untouched.
 
-Requirements
-------------
+## What it does
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+- `/etc/issue.net` legal banner.
+- `/etc/ssh/sshd_config.d/20-ssh-hardening.conf`: no root login, no password
+  nor keyboard-interactive authentication, keys only, `MaxAuthTries 3`,
+  client alive 300 s × 2, banner.
 
-Role Variables
---------------
+sshd keeps the first value read for an option and reads the drop-ins before
+its own settings: this file wins over the distribution defaults and over
+`50-cloud-init.conf`.
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+## Safeguards against a lockout
 
-Dependencies
-------------
+- The drop-in is validated before being written (`sshd -t -f`).
+- The handler validates the full configuration (`sshd -t`) before the
+  reload: if it is invalid, the play stops and the running sshd keeps its
+  previous configuration. Reload, not restart: open sessions survive.
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+## Variables
 
-Example Playbook
-----------------
-
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
-
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
-
-License
--------
-
-BSD
-
-Author Information
-------------------
-
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+`ssh_hardening_*` in `defaults/main.yml` (yes/no values quoted: unquoted they
+become YAML booleans). Service name per OS in `vars/`.

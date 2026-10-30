@@ -28,7 +28,7 @@ endef
 	network network-check network-apply pfsense-backup \
 	bootstrap iso media-test serve-iso install pve-config-check \
 	vms-init vms-plan \
-	config
+	config-check config
 
 help: ## List the targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -95,6 +95,9 @@ vms-plan: ## List the cluster VMs, change nothing (needs 20-proxmox/terraform.tf
 	$(TERRAFORM) plan
 
 # --- 30 config: OS configuration of the VMs ---------------------------------
+
+config-check: ## Preview the OS configuration of the VMs (no change)
+	$(PLAYBOOK) 30-config.yml --check --diff
 
 config: ## Apply the OS configuration of the VMs (CONFIRM=yes)
 	$(call need_confirm,the VMs)

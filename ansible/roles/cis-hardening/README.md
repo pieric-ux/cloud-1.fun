@@ -1,38 +1,23 @@
-Role Name
-=========
+# cis-hardening
 
-A brief description of the role goes here.
+CIS Level 1 Server settings for sshd (layer 30), the values an OpenSCAP
+report expects.
 
-Requirements
-------------
+## What it does
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+- `/etc/ssh/sshd_config` mode `0600`.
+- `/etc/ssh/sshd_config.d/10-cis-hardening.conf`: `AllowGroups` (only the
+  admin and automation groups may log in), ciphers / KEX / MACs restricted
+  to the CIS list, no host-based authentication, `IgnoreRhosts`, login grace
+  time, log level, `MaxSessions`, `MaxStartups`, no empty passwords, no user
+  environment.
 
-Role Variables
---------------
+Read before `20-ssh-hardening.conf` (role `ssh-hardening`): on a conflict,
+the CIS value wins. Validated before being written (`sshd -t -f`); reload
+through the `ssh-hardening` handler.
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+## Variables
 
-Dependencies
-------------
-
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
-
-Example Playbook
-----------------
-
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
-
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
-
-License
--------
-
-BSD
-
-Author Information
-------------------
-
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+`cis_hardening_ssh_allow_groups` is set in `inventory/group_vars/all/vars.yml`
+(`admins`, `ansible`); empty list: no `AllowGroups` line. Algorithm lists and
+the other values in `defaults/main.yml`.

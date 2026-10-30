@@ -5,7 +5,7 @@
 - name: Check that admin accounts are defined
   ansible.builtin.assert:
     that: users_admins | length > 0
-    fail_msg: users_admins is empty, set it in inventory/group_vars/all.yml
+    fail_msg: users_admins is empty, set it in inventory/group_vars/all/vars.yml
 
 - name: Create admin group
   ansible.builtin.group:

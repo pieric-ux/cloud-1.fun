@@ -4,7 +4,7 @@
 # yes/no values are quoted: unquoted they become YAML booleans and render as True/False.
 
 # Groups allowed to log in over SSH. Empty list: no AllowGroups line, every
-# account may log in. The site value lives in inventory/group_vars/all.yml.
+# account may log in. The site value lives in inventory/group_vars/all/vars.yml.
 cis_hardening_ssh_allow_groups: []
 
 # Algorithms accepted by the CIS Level 1 Server profile (OpenSCAP report).

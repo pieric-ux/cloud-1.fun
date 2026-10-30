@@ -5,7 +5,7 @@
 - name: Check that automation keys are defined
   ansible.builtin.assert:
     that: users_automation_keys | length > 0
-    fail_msg: users_automation_keys is empty, set it in inventory/group_vars/all.yml
+    fail_msg: users_automation_keys is empty, set it in inventory/group_vars/all/vars.yml
 
 - name: Keep only automation keys on the automation account
   ansible.posix.authorized_key:
