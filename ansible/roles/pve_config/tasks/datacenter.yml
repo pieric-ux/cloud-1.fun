@@ -1,0 +1,35 @@
+---
+# Datacenter options (/etc/pve/datacenter.cfg, shared by the cluster): only
+# the managed keys are compared and set, through the API (files in /etc/pve
+# live on pmxcfs, which refuses chmod/chown).
+- name: Read the datacenter options
+  ansible.builtin.slurp:
+    src: /etc/pve/datacenter.cfg
+  register: pve_datacenter_cfg
+  run_once: true
+
+- name: Datacenter options to change
+  ansible.builtin.debug:
+    msg: "{{ pve_datacenter_diff }}"
+  changed_when: true
+  when: pve_datacenter_diff | length > 0
+  run_once: true
+
+- name: Set the datacenter options
+  ansible.builtin.command:
+    argv: "{{ ['pvesh', 'set', '/cluster/options'] + pve_datacenter_args }}"
+  changed_when: true
+  when:
+    - pve_datacenter_diff | length > 0
+    - not ansible_check_mode
+  run_once: true
+  vars:
+    pve_datacenter_args: >-
+      {{ pve_datacenter_diff.keys() | map('regex_replace', '^', '--')
+         | zip(pve_datacenter_diff.values()) | flatten }}
+
+- name: Datacenter options checked
+  ansible.builtin.debug:
+    msg: "{{ pve_datacenter_options.keys() | list }} match the live cluster"
+  when: pve_datacenter_diff | length == 0
+  run_once: true

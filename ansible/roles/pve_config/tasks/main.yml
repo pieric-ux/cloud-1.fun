@@ -1,8 +1,8 @@
 ---
 # Checked against the live nodes on 2026-10-30 (--check --diff, no change
 # besides "Enabled: no" -> "false" on pve01). Always preview with
-# --check --diff first. Cluster join and storage are cluster-wide
-# operations: see cluster.yml and storage.yml (not imported, not validated).
+# --check --diff first. Cluster join stays manual (cluster.yml, not
+# imported).
 - name: Refuse a real run without explicit confirmation
   ansible.builtin.assert:
     that: ansible_check_mode or (pve_config_confirm | bool)
@@ -18,3 +18,14 @@
 
 - name: Initiator and multipath for iSCSI
   ansible.builtin.import_tasks: iscsi.yml
+
+# Cluster-wide from here (run once): the node must already be in the cluster
+# (manual join, see cluster.yml), or these would land in its own config.
+- name: Datacenter options
+  ansible.builtin.import_tasks: datacenter.yml
+
+- name: Storages
+  ansible.builtin.import_tasks: storage.yml
+
+- name: Backup jobs
+  ansible.builtin.import_tasks: backup.yml

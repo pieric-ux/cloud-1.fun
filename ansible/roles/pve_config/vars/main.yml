@@ -1,3 +1,27 @@
 # SPDX-License-Identifier: MIT-0
 ---
-# vars file for pve_config
+# Derived values (lazy: only evaluated once the registered reads exist).
+
+# Managed datacenter options whose "key: value" line is not in datacenter.cfg.
+pve_datacenter_live_lines: >-
+  {{ (pve_datacenter_cfg.content | b64decode).splitlines()
+     | select('match', '^[a-z_-]+:') | list }}
+pve_datacenter_diff: >-
+  {{ dict(pve_datacenter_options.keys()
+     | zip(pve_datacenter_options.values() | map('string'))
+     | map('join', ': ') | difference(pve_datacenter_live_lines)
+     | map('split', ': ', 1)) }}
+
+# Storages and backup jobs not defined on the cluster yet.
+pve_storages_missing: >-
+  {{ pve_storages | rejectattr('name', 'in',
+     pve_storage_status.stdout | from_json | map(attribute='storage') | list) | list }}
+pve_backup_jobs_missing: >-
+  {{ pve_backup_jobs | rejectattr('id', 'in',
+     pve_backup_status.stdout | from_json | map(attribute='id') | list) | list }}
+
+# Storage secrets (vault variable names) and those not defined yet.
+pve_vault_vars: "{{ query('varnames', '^vault_pve_') }}"
+pve_storage_secrets_unset: >-
+  {{ pve_storages | subelements('secrets', skip_missing=true)
+     | map(attribute='1.var') | reject('in', pve_vault_vars) | list }}

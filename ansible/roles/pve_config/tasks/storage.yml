@@ -1,19 +1,76 @@
 ---
 # Cluster-wide storage definitions (/etc/pve/storage.cfg is shared by the
-# cluster): run once, from a node already in the cluster. Created only when
-# missing; an existing definition is never modified here.
+# cluster): created only when missing, an existing definition is never
+# modified here. Through the API (pvesh): option values go through as is,
+# unlike pvesm which prompts for or reads some of them from files.
 - name: Read the defined storages
-  ansible.builtin.command: pvesm status
+  ansible.builtin.command: pvesh get /storage --output-format json
   register: pve_storage_status
   changed_when: false
+  check_mode: false
   run_once: true
 
-- name: Define missing storages
-  ansible.builtin.command: "pvesm add {{ item.type }} {{ item.name }} {{ item.options }}"
-  # Runs only when needed (see when): every run is a real change.
+- name: Storages to create
+  ansible.builtin.debug:
+    msg: "{{ pve_storages_missing | map(attribute='name') | list }}"
   changed_when: true
-  loop: "{{ pve_storages }}"
+  when: pve_storages_missing | length > 0
+  run_once: true
+
+- name: Create the missing storages
+  ansible.builtin.command:
+    argv: >-
+      {{ ['pvesh', 'create', '/storage', '--storage', item.name, '--type', item.type]
+         + (pve_storage_options.keys() | map('regex_replace', '^', '--')
+            | zip(pve_storage_options.values() | map('string')) | flatten) }}
+  vars:
+    pve_storage_secrets: "{{ item.secrets | default([]) }}"
+    pve_storage_options: >-
+      {{ item.options | combine(dict(pve_storage_secrets | map(attribute='option')
+         | zip(query('vars', *(pve_storage_secrets | map(attribute='var'))))) ) }}
+  changed_when: true
+  loop: "{{ pve_storages_missing }}"
   loop_control:
     label: "{{ item.name }}"
-  when: item.name not in pve_storage_status.stdout
+  # Token secrets and encryption key in the command line.
+  no_log: true
+  when: not ansible_check_mode
+  run_once: true
+
+# The vault must hold what the cluster uses, or a rebuilt cluster could not
+# reach its backups: compared by checksum, the secrets are never read back.
+# Copy the files verbatim into the vault (encryption key as a block scalar).
+- name: Read the stored storage secrets (checksum only)
+  ansible.builtin.stat:
+    path: "/etc/pve/priv/storage/{{ item.0.name }}.{{ (item.1.option == 'encryption-key') | ternary('enc', 'pw') }}"
+    checksum_algorithm: sha256
+    get_mime: false
+  loop: "{{ pve_storages | subelements('secrets', skip_missing=true) }}"
+  loop_control:
+    label: "{{ item.0.name }} {{ item.1.option }}"
+  register: pve_storage_secret_files
+  run_once: true
+
+- name: Vault secrets match the cluster
+  ansible.builtin.assert:
+    that: >-
+      pve_storage_secret_file.stat.checksum in
+      [pve_storage_secret | hash('sha256'), (pve_storage_secret ~ '\n') | hash('sha256')]
+    fail_msg: "{{ pve_storage_secret_file.item.1.var }} differs from the file on the cluster"
+    quiet: true
+  vars:
+    pve_storage_secret_file: "{{ item }}"
+    pve_storage_secret: "{{ query('vars', item.item.1.var, default='') | first }}"
+  loop: "{{ pve_storage_secret_files.results }}"
+  loop_control:
+    label: "{{ item.item.0.name }} {{ item.item.1.option }}"
+  when:
+    - item.stat.exists
+    - item.item.1.var in pve_vault_vars
+  run_once: true
+
+- name: Storage secrets not in the vault yet
+  ansible.builtin.debug:
+    msg: "{{ pve_storage_secrets_unset }}"
+  when: pve_storage_secrets_unset | length > 0
   run_once: true
