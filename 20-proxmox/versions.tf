@@ -10,6 +10,14 @@ terraform {
     }
   }
 
-  # Local state, gitignored (*.tfstate): it holds secrets in clear. A remote
-  # backend (MinIO / Synology) can come later, never in the repo.
+  # State in HCP Terraform (encrypted, locked, versioned, reachable even with
+  # the rack down). Execution mode Local: plans and applies run on this
+  # machine, the only one that reaches the Proxmox API (HCP cannot). Login:
+  # ~/.terraform.d/credentials.tfrc.json (user token, see README).
+  cloud {
+    organization = "cloud-1-fun"
+    workspaces {
+      name = "cloud-1-proxmox"
+    }
+  }
 }

@@ -9,7 +9,9 @@ PLAYBOOK    := cd $(ANSIBLE_DIR) && ansible-playbook
 ISO_PORT    ?= 8080
 # Terraform from the official image (no local install), same version as the
 # one the code was validated with.
-TERRAFORM   := docker run --rm -it -v $(CURDIR)/20-proxmox:/w -w /w hashicorp/terraform:1.9.8
+# HCP Terraform login (state backend) read from ~/.terraform.d.
+TERRAFORM   := docker run --rm -it -v $(CURDIR)/20-proxmox:/w -w /w \
+	-v $(HOME)/.terraform.d:/root/.terraform.d hashicorp/terraform:1.9.8
 
 # Refuse a target that changes something unless CONFIRM=yes is given.
 define need_confirm

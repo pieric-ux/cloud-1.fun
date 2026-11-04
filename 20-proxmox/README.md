@@ -39,6 +39,20 @@ the secret alone is also kept in `group_vars/pve/vault.yml`
 (`vault_pve_terraform_token`, the token ID is in the Makefile). After a
 rebuild the token is new: copy its secret into the vault again.
 
-State is local and gitignored (it holds secrets in clear); `terraform.tfvars`
-is gitignored too, only the `.example` is versioned. `.terraform.lock.hcl` is
-versioned (pins the provider build).
+**State in HCP Terraform** (organization `cloud-1-fun`, workspace
+`cloud-1-proxmox`, execution mode **Local**): encrypted, locked during a run,
+versioned, and reachable with the rack down. Plans and applies still run on
+this machine: the provider calls the Proxmox API (`https://10.1.240.11:8006`)
+from where Terraform runs, which HCP servers cannot reach. Login once, with a
+**user** token (Account settings > Tokens; an organization token cannot run
+plans), stored in `~/.terraform.d/credentials.tfrc.json`, mounted into the
+Terraform container by the Makefile:
+
+```bash
+docker run --rm -it -v $HOME/.terraform.d:/root/.terraform.d hashicorp/terraform:1.9.8 login
+```
+
+From the MGMT VLAN (no VPN), Docker (OrbStack) needs the macOS *Local
+Network* permission to reach the nodes. `terraform.tfvars` is gitignored,
+only the `.example` is versioned. `.terraform.lock.hcl` is versioned (pins
+the provider build).
