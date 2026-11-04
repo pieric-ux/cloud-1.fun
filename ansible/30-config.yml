@@ -28,6 +28,25 @@
         name: cis-hardening
       tags: cis-hardening
 
+- name: Automation account in the LXC containers (through pct)
+  hosts: lxc
+  gather_facts: false
+
+  tasks:
+    - name: Account
+      ansible.builtin.import_role:
+        name: lxc_access
+      tags: lxc-access
+
+- name: Internal reverse proxy
+  hosts: rproxy
+
+  tasks:
+    - name: Nginx, sites and wildcard certificate
+      ansible.builtin.import_role:
+        name: rproxy
+      tags: rproxy
+
 - name: DHCP and DNS of the rack (from network/addressing.yml)
   hosts: dns
 

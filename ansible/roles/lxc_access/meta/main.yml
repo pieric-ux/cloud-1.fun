@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  author: pieric
+  description: Automation account in the LXC containers, bootstrapped with pct from their Proxmox node
+  license: MIT
+  min_ansible_version: "2.17"
+dependencies: []

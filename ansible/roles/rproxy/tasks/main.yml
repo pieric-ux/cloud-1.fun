@@ -1,0 +1,107 @@
+---
+- name: Nginx and certbot with its Infomaniak plugin
+  ansible.builtin.apt:
+    name: [nginx, certbot, python3-certbot-dns-infomaniak]
+    state: present
+
+- name: Main nginx configuration
+  ansible.builtin.copy:
+    src: nginx.conf
+    dest: /etc/nginx/nginx.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload nginx
+
+- name: WebSocket upgrade map (used by the sites)
+  ansible.builtin.copy:
+    src: websocket.conf
+    dest: /etc/nginx/conf.d/websocket.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload nginx
+
+# Certificate first: every site points to it, nginx -t fails without it.
+- name: Infomaniak API credentials of certbot
+  ansible.builtin.copy:
+    dest: /etc/letsencrypt/infomaniak.ini
+    content: "{{ rproxy_infomaniak_ini }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+- name: Wildcard certificate present
+  ansible.builtin.stat:
+    path: "{{ rproxy_cert_dir }}/fullchain.pem"
+  register: rproxy_cert
+
+# Only on a fresh container (rebuild): afterwards certbot.timer renews it
+# and reloads nginx (renew_hook).
+- name: Request the wildcard certificate (DNS-01)
+  ansible.builtin.command:
+    argv:
+      - certbot
+      - certonly
+      - --non-interactive
+      - --agree-tos
+      - --email
+      - "{{ rproxy_acme_email }}"
+      - --authenticator
+      - dns-infomaniak
+      - --dns-infomaniak-credentials
+      - /etc/letsencrypt/infomaniak.ini
+      - --key-type
+      - ecdsa
+      - --cert-name
+      - "{{ rproxy_domain }}"
+      - -d
+      - "{{ rproxy_domain }}"
+      - -d
+      - "*.{{ rproxy_domain }}"
+      - --deploy-hook
+      - systemctl reload nginx
+  changed_when: true
+  when: not rproxy_cert.stat.exists and not ansible_check_mode
+
+- name: Automatic renewal
+  ansible.builtin.systemd_service:
+    name: certbot.timer
+    enabled: true
+    state: started
+
+- name: Sites
+  ansible.builtin.copy:
+    src: "sites/{{ item }}"
+    dest: "/etc/nginx/sites-available/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ rproxy_sites }}"
+  notify: Reload nginx
+
+- name: Sites enabled
+  ansible.builtin.file:
+    src: "/etc/nginx/sites-available/{{ item }}"
+    dest: "/etc/nginx/sites-enabled/{{ item }}"
+    state: link
+  loop: "{{ rproxy_sites }}"
+  notify: Reload nginx
+
+- name: Enabled sites on the server
+  ansible.builtin.find:
+    paths: /etc/nginx/sites-enabled
+    file_type: any
+  register: rproxy_enabled
+
+- name: Sites enabled by hand, not in the repo
+  ansible.builtin.debug:
+    msg: "{{ rproxy_enabled.files | map(attribute='path') | map('basename') | difference(rproxy_sites) }}"
+  when: rproxy_enabled.files | map(attribute='path') | map('basename') | difference(rproxy_sites) | length > 0
+
+- name: Nginx enabled and running
+  ansible.builtin.systemd_service:
+    name: nginx
+    enabled: true
+    state: started

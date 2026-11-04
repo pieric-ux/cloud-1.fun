@@ -3,5 +3,8 @@ all:
   children:
     lxc:
       hosts:
+        # lxc_vmid: the container id, for pct on its node (role lxc_access).
         vault:
+          lxc_vmid: 2402
         rproxy-int:
+          lxc_vmid: 2403

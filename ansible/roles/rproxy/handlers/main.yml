@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: MIT-0
+---
+# A configuration that does not pass nginx -t is never reloaded.
+- name: Reload nginx
+  ansible.builtin.command: nginx -t
+  changed_when: true
+  notify: Reload nginx service
+
+- name: Reload nginx service
+  ansible.builtin.systemd_service:
+    name: nginx
+    state: reloaded

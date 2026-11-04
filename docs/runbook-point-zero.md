@@ -380,7 +380,10 @@ remplacement : restaurer sur le nœud du code.
 make config-check
 make config CONFIRM=yes
 ```
-Inclut le DHCP et le DNS de dhcp-dns (générés depuis
+Inclut le compte `ansible` des conteneurs LXC (`lxc_access`, par `pct exec`
+depuis leur nœud : un conteneur restauré l'a déjà), le reverse proxy
+rproxy-int01 (`rproxy` : nginx, les 15 sites, certificat wildcard demandé
+par DNS-01 chez Infomaniak s'il manque), le DHCP et le DNS de dhcp-dns (générés depuis
 `network/addressing.yml`, aussi : `make dns-check` / `make dns-apply`), la
 supervision (node-exporter, Prometheus, Grafana) et k3s (le
 control-plane d'abord, puis les workers un par un).

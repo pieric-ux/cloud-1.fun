@@ -1,0 +1,40 @@
+---
+# A container has only root (team keys) until this role ran: the account is
+# made from the Proxmox node hosting it (pct exec), found through the cluster
+# API since the HA may have moved it.
+- name: Node hosting the container
+  ansible.builtin.command: pvesh get /cluster/resources --type vm --output-format json
+  register: lxc_access_resources
+  changed_when: false
+  check_mode: false
+  delegate_to: "{{ groups['pve'][0] }}"
+  become: true
+
+- name: Automation account in the container
+  ansible.builtin.command:
+    argv:
+      - pct
+      - exec
+      - "{{ lxc_vmid | string }}"
+      - --
+      - sh
+      - -c
+      - |
+        set -e
+        changed=no
+        command -v sudo >/dev/null || { apt-get install -y -qq sudo >/dev/null; changed=yes; }
+        id {{ lxc_access_user }} >/dev/null 2>&1 || { useradd -m -s /bin/bash {{ lxc_access_user }}; changed=yes; }
+        home=$(getent passwd {{ lxc_access_user }} | cut -d: -f6)
+        install -d -m 700 -o {{ lxc_access_user }} -g {{ lxc_access_user }} "$home/.ssh"
+        printf '%s\n' {% for key in lxc_access_keys %}'{{ key }}' {% endfor %}> /tmp/ansible-keys
+        cmp -s /tmp/ansible-keys "$home/.ssh/authorized_keys" || { install -m 600 -o {{ lxc_access_user }} -g {{ lxc_access_user }} /tmp/ansible-keys "$home/.ssh/authorized_keys"; changed=yes; }
+        rm -f /tmp/ansible-keys
+        echo '{{ lxc_access_user }} ALL=(ALL) NOPASSWD:ALL' > /tmp/ansible-sudo
+        cmp -s /tmp/ansible-sudo /etc/sudoers.d/{{ lxc_access_user }} || { visudo -cqf /tmp/ansible-sudo && install -m 440 /tmp/ansible-sudo /etc/sudoers.d/{{ lxc_access_user }}; changed=yes; }
+        rm -f /tmp/ansible-sudo
+        echo "changed=$changed"
+  register: lxc_access_result
+  changed_when: "'changed=yes' in lxc_access_result.stdout"
+  delegate_to: "{{ (lxc_access_resources.stdout | from_json | selectattr('vmid', '==', lxc_vmid) | first).node }}"
+  become: true
+  when: not ansible_check_mode

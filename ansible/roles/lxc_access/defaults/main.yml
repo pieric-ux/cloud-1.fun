@@ -1,0 +1,5 @@
+---
+# Same automation account as on the VMs (users role): SSH key only,
+# passwordless sudo. Created through pct, there is no SSH access before it.
+lxc_access_user: ansible
+lxc_access_keys: "{{ users_automation_keys }}"
