@@ -18,13 +18,15 @@ Source : `infra03/docs/module03/cluster_setup.md`, `proxmox_setup.md`.
 | Dépôts | enterprise + ceph désactivés, `pve-no-subscription` (deb822), dépôt **HPE MCP** (`ssacli`) |
 | NTP | chrony, pfSense `10.1.255.2` seul (`sources.d/pfsense.sources`) |
 
-**HA** (`/etc/pve/ha/rules.cfg`, PVE 9) : ressources `vm:2401` dhcp-dns,
-`ct:2402` vault-01, `ct:2403` rproxy-int01, `vm:2406` prometheus01,
-`vm:2407` grafana01 (`max_restart 1`, `max_relocate 1`, `failback 1`).
-Règles : `node-affinity home-pve01` (2401, 2403, 2406), `home-pve02` (2402,
-2407), `resource-affinity prometheus-with-dns` positive (2401 + 2406 :
-Prometheus résout ses cibles via dhcp-dns). Pas de règle négative (bloquerait
-la reprise sur le seul nœud restant).
+**HA** (relevé du 2026-11-04, décrit dans `20-proxmox/ha.tf`) : 10
+ressources (`max_restart 3`, `max_relocate 2`, dhcp-dns `5` / `3`) :
+`vm:2401` dhcp-dns, `ct:2402` vault-01, `ct:2403` rproxy-int01, `vm:2405`
+Ansible, `vm:2406` prometheus01, `vm:2407` grafana01, `vm:2481` c2-hak5,
+`vm:1000-1002` k3s. Règles : `node-affinity home-pve01` (2403, 1000-1002,
+2401, 2406), `home-pve02` (2402, 2407), `resource-affinity` positives
+`prometheus-with-dns` (2401 + 2406) et `ha-rule-ea0d3cd4-3518` (les trois
+k3s ensemble). Pas de règle négative. Hors HA : pbs (disque local), sliver-c2,
+captive-portal.
 
 **Modèle CPU** des VMs migrables : `Haswell-noTSX-IBRS,flags=+pcid;+md-clear;+ssbd`
 (nœud le plus ancien ; `host` fait planter la migration pve02 → pve01).
