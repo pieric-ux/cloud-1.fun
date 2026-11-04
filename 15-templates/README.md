@@ -14,8 +14,8 @@ Taken from `42-piscine-infra/infra04/packer/pieric`, with:
 - Debian: one root partition, last on the disk, and a swap file instead of
   the swap partition of the `atomic` recipe, which sat after the root and
   kept cloud-init from growing it on a clone with a bigger disk (seen on
-  gitea01, fixed by hand there). Template 8005 still has the old layout
-  until it is rebuilt.
+  gitea01, fixed by hand there). Template 8005 rebuilt on 2026-11-04: a
+  clone with a 20 GiB disk gets a 20 GiB root by itself.
 - one directory, shared variables (`variables.pkr.hcl`), API token and
   addresses in `templates.pkrvars.hcl` (gitignored).
 
@@ -31,7 +31,7 @@ On every clone: user `ansible` (cloud-init), SSH key `key/ansible` only
 ## Use
 
 ```bash
-cp templates.pkrvars.example.hcl templates.pkrvars.hcl   # token, addresses
+make templates-vars                     # templates.pkrvars.hcl from the vault (HTTP_IP= to force)
 make templates-check                    # init + fmt + validate, no API call
 make templates CONFIRM=yes              # build the three, one at a time
 make templates CONFIRM=yes ONLY='ubuntu2404.*'           # only one
@@ -39,13 +39,15 @@ make templates CONFIRM=yes ONLY='ubuntu2404.*'           # only one
 
 Prerequisites:
 
-- token of `packer@pve` with the rights to create VMs and templates;
+- token `packer@pve!pieric` (privilege separation off, rights of
+  `PackerRole`): its secret is `vault_pve_packer_token` in the pve vault;
 - `http_ip` reachable from VLAN 240 on TCP 8802 / 8803 (the VM downloads its
   answer file from this machine: over the VPN, the tunnel address);
 - `alpine_build_ip`: a free address of VLAN 240;
-- **the VMID free**: the build fails on an existing VM. The current
-  templates 8003-8005 (still with `cpu: host`, 2026-10-30) have to be
-  removed first, once no VM is a linked clone of them.
+- **the VMID free**: the build fails on an existing VM; remove the old
+  template first (no VM is a linked clone of them, all full clones).
+- after the build, add the CPU flags the plugin cannot set:
+  `qm set <vmid> --cpu 'Haswell-noTSX-IBRS,flags=+pcid;+md-clear;+ssbd'`.
 
 Builds run one at a time (`-parallel-builds=1`): Ubuntu and Debian serve
 their answer file on the same port.

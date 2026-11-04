@@ -30,7 +30,7 @@ endef
 .PHONY: help preflight lint \
 	network network-check network-apply pfsense-backup \
 	bootstrap iso media-test serve-iso install pve-config-check pve-config pbs-config-check pbs-config \
-	storage-check storage-apply storage-apply-check dns-check dns-apply templates-check templates \
+	storage-check storage-apply storage-apply-check dns-check dns-apply templates-vars templates-check templates \
 	vms-tfvars vms-init vms-plan vms-apply \
 	config-check config k8s-check k8s-apply
 
@@ -123,6 +123,16 @@ dns-apply: ## Apply DHCP and DNS from network/addressing.yml (CONFIRM=yes)
 # --- 15 templates: Packer (local install: serves the answer files over HTTP
 # to the VM, on the address of this machine seen from VLAN 240) -------------
 TEMPLATES_DIR := 15-templates
+
+# Address of this machine seen from VLAN 240 (serves the answer files): en0 on
+# the MGMT VLAN, the VPN tunnel otherwise; override with HTTP_IP=.
+HTTP_IP ?= $(shell ipconfig getifaddr en0 2>/dev/null || ifconfig utun6 2>/dev/null | awk '/inet /{print $$2}')
+
+templates-vars: ## Write 15-templates/templates.pkrvars.hcl from the vault (token secret never displayed)
+	cd $(ANSIBLE_DIR) && ansible localhost -m ansible.builtin.copy -e ansible_become=false \
+		-e @inventory/group_vars/pve/vault.yml \
+		-a 'dest=../$(TEMPLATES_DIR)/templates.pkrvars.hcl mode=0600 content="proxmox_username = \"packer@pve!pieric\"\nproxmox_token    = \"{{ vault_pve_packer_token }}\"\nhttp_ip          = \"$(HTTP_IP)\"\nalpine_build_ip  = \"10.1.240.249\"\n"' \
+		| sed -E 's/[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}/<hidden>/g'
 
 templates-check: ## Validate the Packer templates (local, no API call)
 	cd $(TEMPLATES_DIR) && packer init . && packer fmt -check . \
