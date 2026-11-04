@@ -68,7 +68,7 @@ socket / 1 cœur, 2048 Mio, `scsi0` 12 Gio `synology-lvm` (`discard=on`,
 `BC:24:11:A1:A6:FB`, `agent: 1`, tag `mgmt`. PBS : 4 vCPU, 4 Gio, système 16
 Gio + datastore 40 Gio (`backup=0`), `10.1.240.30`.
 
-→ La méthode reste l'import avec génération de code (`imports.tf.example`),
+→ Importés le 2026-11-04 avec génération de code (`20-proxmox/imports.tf`),
 ces valeurs servent à vérifier le code généré.
 
 ## Templates Packer (→ couche 20)

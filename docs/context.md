@@ -669,7 +669,7 @@ le vault) pour savoir reconstruire, puis `pfsensible.core` objet par objet
 `terraform.tfvars` gitignoré (`.example` versionné), **lecture seule** :
 `data "proxmox_virtual_environment_vms"` + output. Pas de ressource écrite à
 la main : les VMs existent, le 1er plan voudrait les remplacer. Étape 2 :
-blocs `import` (`imports.tf.example`, VMIDs du module 01) + `terraform plan
+blocs `import` (`imports.tf`, fait le 2026-11-04) + `terraform plan
 -generate-config-out` → code généré depuis les VMs réelles (0 écart, comme
 `gathered`). Terraform non installé localement → image
 `hashicorp/terraform:1.9.8` (`make vms-init` / `make vms-plan`). Token API
