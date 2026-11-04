@@ -5,3 +5,16 @@ gitea_secret_key: "{{ vault_gitea_secret_key }}"
 gitea_internal_token: "{{ vault_gitea_internal_token }}"
 gitea_jwt_secret: "{{ vault_gitea_jwt_secret }}"
 gitea_admin_password: "{{ vault_gitea_admin_password }}"
+
+# Admin SSH keys in Gitea: the same as on the hosts (users_admins).
+gitea_admin_ssh_keys: "{{ (users_admins | selectattr('name', '==', gitea_admin_user) | first).ssh_keys }}"
+
+# Repositories created when missing; `mirror_to`: push mirror (needs the
+# GitHub token, vault_gitea_github_token: fine-grained, Contents read/write
+# on that repository only).
+gitea_repos:
+  - name: cloud-1.fun
+    description: Infrastructure as code of the cloud-1 rack (42 Lausanne)
+    private: true
+    mirror_to: https://github.com/pieric-ux/cloud-1.fun.git
+gitea_github_token: "{{ vault_gitea_github_token | default('') }}"

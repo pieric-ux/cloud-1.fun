@@ -1,0 +1,104 @@
+---
+# Objects inside Gitea, through its API (local, no proxy): admin SSH keys,
+# repositories, push mirrors to GitHub. Created when missing, never deleted.
+- name: SSH keys of the admin account
+  ansible.builtin.uri:
+    url: "{{ gitea_api }}/users/{{ gitea_admin_user }}/keys"
+    user: "{{ gitea_admin_user }}"
+    password: "{{ gitea_admin_password }}"
+    force_basic_auth: true
+  register: gitea_keys
+  no_log: true
+
+- name: Add the missing SSH keys
+  ansible.builtin.uri:
+    url: "{{ gitea_api }}/admin/users/{{ gitea_admin_user }}/keys"
+    method: POST
+    user: "{{ gitea_admin_user }}"
+    password: "{{ gitea_admin_password }}"
+    force_basic_auth: true
+    body_format: json
+    body:
+      title: "{{ item.split()[2] | default('key') }}"
+      key: "{{ item }}"
+    status_code: 201
+  changed_when: true
+  loop: "{{ gitea_admin_ssh_keys }}"
+  loop_control:
+    label: "{{ item.split()[2] | default(item.split()[1][-12:]) }}"
+  when: (item.split()[:2] | join(' ')) not in (gitea_keys.json | map(attribute='key') | map('split') | map('batch', 2) | map('first') | map('join', ' ') | list)
+  no_log: true
+
+- name: Existing repositories
+  ansible.builtin.uri:
+    url: "{{ gitea_api }}/repos/{{ gitea_admin_user }}/{{ item.name }}"
+    user: "{{ gitea_admin_user }}"
+    password: "{{ gitea_admin_password }}"
+    force_basic_auth: true
+    status_code: [200, 404]
+  loop: "{{ gitea_repos }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: gitea_repo_status
+  no_log: true
+
+- name: Create the missing repositories
+  ansible.builtin.uri:
+    url: "{{ gitea_api }}/user/repos"
+    method: POST
+    user: "{{ gitea_admin_user }}"
+    password: "{{ gitea_admin_password }}"
+    force_basic_auth: true
+    body_format: json
+    body:
+      name: "{{ item.item.name }}"
+      description: "{{ item.item.description | default('') }}"
+      private: "{{ item.item.private | default(true) }}"
+      default_branch: main
+      auto_init: false
+    status_code: 201
+  changed_when: true
+  loop: "{{ gitea_repo_status.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when: item.status == 404
+  no_log: true
+
+- name: Push mirrors of the repositories
+  ansible.builtin.uri:
+    url: "{{ gitea_api }}/repos/{{ gitea_admin_user }}/{{ item.name }}/push_mirrors"
+    user: "{{ gitea_admin_user }}"
+    password: "{{ gitea_admin_password }}"
+    force_basic_auth: true
+  loop: "{{ gitea_repos | selectattr('mirror_to', 'defined') }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: gitea_mirror_status
+  when: gitea_github_token | length > 0
+  no_log: true
+
+# Pushed on every commit and every 8 h; the token never leaves Gitea.
+- name: Add the missing push mirrors
+  ansible.builtin.uri:
+    url: "{{ gitea_api }}/repos/{{ gitea_admin_user }}/{{ item.item.name }}/push_mirrors"
+    method: POST
+    user: "{{ gitea_admin_user }}"
+    password: "{{ gitea_admin_password }}"
+    force_basic_auth: true
+    body_format: json
+    body:
+      remote_address: "{{ item.item.mirror_to }}"
+      remote_username: "{{ item.item.mirror_to.split('/')[3] }}"
+      remote_password: "{{ gitea_github_token }}"
+      interval: 8h0m0s
+      sync_on_commit: true
+    status_code: [200, 201]
+  changed_when: true
+  loop: "{{ gitea_mirror_status.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name | default('') }}"
+  when:
+    - gitea_github_token | length > 0
+    - item.json is defined
+    - item.item.mirror_to not in (item.json | map(attribute='remote_address') | list)
+  no_log: true

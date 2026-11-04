@@ -118,3 +118,7 @@
   when:
     - not ansible_check_mode
     - gitea_admin_user not in gitea_admins.stdout
+
+- name: Keys, repositories and mirrors
+  ansible.builtin.import_tasks: api.yml
+  when: not ansible_check_mode

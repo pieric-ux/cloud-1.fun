@@ -26,3 +26,9 @@ gitea_jwt_secret: ""
 gitea_admin_user: pieric
 gitea_admin_email: demont.pieric@protonmail.com
 gitea_admin_password: ""
+
+# API of the local instance (keys, repositories, mirrors: api.yml).
+gitea_api: "http://127.0.0.1:{{ gitea_http_port }}/api/v1"
+gitea_admin_ssh_keys: []
+gitea_repos: []
+gitea_github_token: ""
