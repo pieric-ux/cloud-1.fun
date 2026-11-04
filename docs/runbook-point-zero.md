@@ -33,7 +33,7 @@ fois la vérification OK. Chaque étape dit *quoi*, *pourquoi c'est manuel*,
 1. Cloner le repo depuis GitHub (`git@github.com:pieric-ux/cloud-1.fun.git`,
    miroir du Gitea du rack, qui n'existe pas encore pendant un rebuild). Une
    fois gitea01 revenu (restauration ou couche 30), repasser `origin` sur
-   `ssh://git@gitea01.cloud-1.fun:2222/pieric/cloud-1.fun.git`.
+   `ssh://git@gitea01.cloud-1.fun:2222/gitea-admin/cloud-1.fun.git`.
 2. Ansible et ses dépendances :
    ```bash
    pipx install --include-deps ansible

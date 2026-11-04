@@ -19,7 +19,7 @@ admin SSH keys (the same as `users_admins`), the repositories of
 `vault_gitea_github_token`).
 
 The repo itself: `origin` is
-`ssh://git@gitea01.cloud-1.fun:2222/pieric/cloud-1.fun.git`; GitHub is the
+`ssh://git@gitea01.cloud-1.fun:2222/gitea-admin/cloud-1.fun.git`; GitHub is the
 offsite copy, cloned from during a full rebuild (Gitea is a guest of the
 rack).
 

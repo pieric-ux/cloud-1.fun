@@ -23,7 +23,8 @@ gitea_internal_token: ""
 gitea_jwt_secret: ""
 
 # First admin account, created when missing.
-gitea_admin_user: pieric
+# "admin" is reserved by Gitea.
+gitea_admin_user: gitea-admin
 gitea_admin_email: demont.pieric@protonmail.com
 gitea_admin_password: ""
 
