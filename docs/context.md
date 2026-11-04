@@ -1,299 +1,115 @@
 # context.md — cloud-1-iac
 
-> Doc de passation. Lu en premier par une nouvelle session Claude Code lancée
-> dans ce repo. Reprend les décisions prises dans la session précédente (qui
-> tournait dans le repo piscine `42-piscine-infra`, dossier différent → ni son
-> contexte ni sa mémoire ne suivent ici).
+> Doc de passation, lu en premier par une nouvelle session dans ce repo.
+> Mis à jour le 2026-11-04 : état réel de toutes les couches, sources de
+> vérité, pièges appris. Les constats techniques des couches 10 et 00 (iLO 4,
+> IOS 12.2, pfSense) sont gardés tels quels plus bas.
 
 ## Le but
 
-**GitOps bare-metal.** Ce repo devient la *source de vérité* de toute l'infra du
-rack (42 Lausanne — Piscine Infrastructure, groupe de 3-4 partageant un rack).
-Objectif : pouvoir **remonter l'infra entière à partir du repo**, du métal
-jusqu'aux VMs, de façon reproductible et versionnée.
+**GitOps bare-metal** du rack de la Piscine Infrastructure (42 Lausanne,
+groupe de 3-4) : ce repo est la *source de vérité* de toute l'infra et doit
+permettre de **tout remonter**, du métal aux applications, puis de restaurer
+les backups. Extension perso au-delà des modules notés, partagée au groupe.
 
-C'est une **extension perso** au-delà des modules notés (M00→M06), pas un
-livrable de groupe. « Perso d'abord » : prototypé seul, partagé au groupe quand
-c'est solide.
-
-**Périmètre (tranché) : tout est reconstructible, Synology compris.** Si tout
-crashe : on reconfigure toute l'infra par l'automatisation, *puis* on restaure
-les backups. Backups = pve02 **+ remote** (copie hors rack → survit à un crash
-total).
-
-- **Point zéro manuel** irréductible, à minimiser et documenter en runbook
-  dans `docs/` : câblage, IP mgmt des switchs (console), install DSM + 1er
-  admin Synology, comptes iLO.
-- **Ordre réel de rebuild** : point zéro → réseau → Synology (partage ISO +
-  iSCSI) → bare metal pve → VMs → config → restauration backups. La
-  numérotation des couches est gardée telle quelle ; l'ordre est porté par le
-  Makefile.
-- **Ordre de dev ≠ ordre d'exécution** : le réseau existe déjà et marche → on
-  finit la couche 10 d'abord, la couche 00 s'insère *avant* elle dans le
-  Makefile ensuite.
-- **IP des iLO : statiques, point zéro** (idée de réservations DHCP pfSense
-  abandonnée). Le DHCP du VLAN MGMT est servi par la VM `dhcp-dns` (dnsmasq),
-  absente en rebuild ; et l'IP est stockée dans l'iLO lui-même → elle survit
-  à la réinstallation de l'OS. À faire une fois par machine. MAC iLO :
-  `94:18:82:74:4b:b0` (pve01), `f4:03:43:41:a1:dc` (pve02). Le compte iLO
-  pourrait être créé par Redfish (`AddUser`) avec le mot de passe
-  `Administrator` d'usine (étiquette).
-- **Principe** : automatiser au maximum, documenter le reste avec la raison.
-  - `docs/runbook-point-zero.md` (**écrit le 2026-10-29**) : étapes manuelles dans l'ordre,
-    pour chacune *quoi*, *pourquoi pas automatisable*, *comment vérifier*.
-  - **Playbook preflight** lecture seule (**fait le 2026-10-29** : rôle
-    `preflight`, `preflight.yml`) lancé en tête de rebuild :
-    vérifie les prérequis manuels (switchs, Synology, iLO + identifiants) et
-    stoppe net avec un message clair si un manque. La partie lecture seule de
-    `10-bootstrap.yml` en est déjà la moitié.
-  - Le runbook rétrécit avec le temps : chaque étape automatisée en sort.
-- Synology : pas de collection Ansible officielle → API DSM (`SYNO.*` via
-  `uri`) ou SSH + `synowebapi`. À explorer en lecture seule d'abord.
+- Ordre de rebuild : point zéro manuel (`docs/runbook-point-zero.md`) →
+  réseau → NAS → Proxmox → cluster → `pve_config` → PBS → restauration des
+  guests (depuis `pbs-offsite`) → Terraform (HA) → config → applications k8s.
+  Le Makefile porte l'ordre (`make help`), `make preflight` vérifie le point
+  zéro.
+- Pannes partielles (un nœud, le PBS seul, le poste de contrôle) : section 9
+  du runbook.
 
 ## Le mode de travail (IMPORTANT)
 
-**Claude = copilote, pas exécutant.** L'utilisateur (pieric) veut *faire
-lui-même* — c'est un piscine, la défense exige d'expliquer et justifier chaque
-choix. Donc : Claude explique, débloque, relit le code, donne des pistes de doc.
-L'utilisateur tape et construit. Ne pas partir tout coder dans son coin.
+- Claude = **copilote** : il propose (direction, choix à défendre), écrit le
+  code et lance ce qui est local ou en lecture seule ; pieric décide.
+- **Jamais d'écriture sur la prod sans feu vert explicite** (« go »), même
+  quand un plan ou un `--check` a l'air propre. Lecture seule (`--check`,
+  `show`, `pvesh get`, relevés) : permis. Toujours `--check --diff` d'abord,
+  et lire chaque écart avant d'appliquer.
+- **La prod fait foi** : quand le code et la prod divergent, on comprend
+  d'abord (souvent une modif à la main de l'équipe), on aligne le code sur la
+  prod, on n'écrase pas.
+- **Commits sans attribution** (pas de Co-Authored-By), messages en anglais,
+  sujet + liste. Pousser sur `origin` (Gitea), le miroir suit vers GitHub.
+- Secrets : lab, une fuite n'est pas grave, mais ils vont **toujours** dans
+  un vault, récupérés sans affichage. Ne jamais lire un secret avec
+  `ansible -m debug` : `ansible.log` l'enregistre (arrivé deux fois, nettoyé).
+- `ansible_host` = noms d'hôtes (préférence de pieric), sauf dhcp-dns (IP :
+  c'est le DNS).
 
-- Donner la **direction** (« prochaine étape : X »), pas de commandes basiques
-  pas-à-pas (mkdir, touch, git add…). Détailler seulement les vrais pièges et
-  les choix à défendre.
-- **Ne rien faire sans demande explicite**, y compris les vérifs en lecture
-  (git status, ls…) pour « contrôler » l'avancement.
-- Exception accordée : Claude peut lancer/relancer tout ce qui est **local**
-  (rendus, builds, Docker sur le laptop). **Jamais la prod** (OS des pve,
-  iLO, VMs, réseau) sans feu vert explicite de pieric.
+## Architecture : couches et outils
 
-## Les décisions déjà tranchées
-
-| Sujet | Choix |
-|---|---|
-| Serveur git local | **Gitea/Forgejo** (LXC léger) |
-| Sens du miroir | **Local (Gitea) → GitHub** (push-mirror). GitHub = backup + source pour un rebuild from-scratch |
-| Automatisation bare-metal | **Oui** : install Proxmox via **Redfish (iLO) + ISO auto-install** |
-| Secrets | **ansible-vault + tfvars gitignorés**, tfstate **local gitignoré** |
-| Ownership repo | Perso d'abord |
-
-### Le piège chicken-and-egg (à garder en tête)
-Le Gitea local tournera dans une VM **sur** Proxmox. Lors d'un rebuild total,
-Proxmox n'existe pas encore → Gitea injoignable. Donc **GitHub (ou un clone
-laptop) = source de vérité pour le rebuild**. Gitea = remote de travail quotidien
-qui push-mirror vers GitHub. Ordre de rebuild :
-`clone GitHub → couches 0→3 → la VM Gitea remonte → re-sync avec GitHub`.
-
-## L'architecture — couches et frontières d'outils
-
-Le chaînage est **Packer → (bare metal) → Ansible réseau → Terraform → Ansible config**.
-Terraform **ne gère PAS tout** : son vrai terrain = les VMs Proxmox.
-
-| Couche | Quoi | Outil réel | Note |
+| Couche | Quoi | Outil | État (2026-11-04) |
 |---|---|---|---|
-| **0. bare metal** | Installer Proxmox sur pve01/pve02 via iLO | **Redfish** (`community.general.redfish_*`) + **ISO Proxmox auto-install** (`answer.toml`, Proxmox 8.2+ `proxmox-auto-install-assistant`) | Terraform ne parle pas à l'iLO |
-| **1. réseau** | Switchs Cisco L2/L3 + pfSense | **Ansible** (`cisco.ios`, `pfsensible.core` ou API pfSense) | Providers Terraform Cisco/pfSense immatures → on reste sur Ansible |
-| **2. VMs** | Cloner templates Packer, cloud-init, VLAN, disque `synology-lvm` | **Terraform `bpg/proxmox`** (pas Telmate) | ✅ cœur de valeur de Terraform ici |
-| **3. config** | users, ssh-hardening, services | **Ansible** (réutiliser les rôles d'`infra04`/`infra06`) | déjà écrits côté piscine |
+| 00 réseau | switchs l3sw (3560-V2, IOS 12.2) / l2sw (2960-X), pfSense | Ansible `cisco.ios`, `pfsensible.core` | ✅ `--check` = 0 (VLAN 13 de l'équipe repris) |
+| 05 stockage | Synology RS812RP+ (DSM 6.2) : LUN, cible iSCSI, masking, NFS | Ansible, API web DSM (`uri`) | ✅ audit 16/16 ; création iSCSI testée ; partage NFS manuel |
+| 10 bootstrap | install Proxmox par l'iLO (Redfish + ISO auto-install) | Ansible `redfish_bootstrap` | ✅ écrit ; **test réel sur place à faire** |
+| 10 nœuds | dépôts, iSCSI, datacenter, stockages, backup, comptes API | Ansible `pve_config` | ✅ `--check` = 0 ; join du cluster manuel |
+| 10 PBS | datastore, accès, jobs, sync chiffré hors site | Ansible `pbs_config` | ✅ `--check` = 0 |
+| 15 templates | Debian / Ubuntu / Alpine | Packer (`proxmox-iso`) | ✅ 8005 reconstruit et testé (racine qui s'agrandit) |
+| 20 guests | VMs, LXC, HA (règles PVE 9) | Terraform `bpg/proxmox`, état sur HCP | ✅ `No changes` ; HA possède le placement |
+| 30 config | base (common, users, hardening), DNS/DHCP, rproxy, supervision, Gitea, k3s | Ansible | ✅ 12/15 à 0 ; k3s : script figé + paquets en attente |
+| 40 k8s | nginx, ingress, network policies, Postgres | kustomize via `k8s_apps` | ✅ `kubectl diff` = 0 |
 
-Ordre impératif à l'exécution (Terraform seul ne sait pas « attends que X
-réponde ») → un **Makefile** d'orchestration en racine. Ex : dhcp-dns doit
-exister avant les autres VMs ; iSCSI avant toute VM.
-
-## Layout du repo (tranché)
-
-**Un dossier par outil, pas par couche.** Les couches 00/10/30 sont toutes en
-Ansible → un seul projet Ansible partagé (inventaire, config, rôles) à la
-racine, au lieu de le dupliquer par couche. L'ordre des couches est porté par
-le nom des playbooks (`00-`, `10-`, `30-`) et par le Makefile.
+## Layout du repo
 
 ```
 cloud-1-iac/
-├── ansible/                    # projet Ansible partagé (couches 00/10/30)
-│   ├── ansible.cfg             # repris tel quel d'infra04 (+ vault_password_file)
-│   ├── requirements.yml        # collections : community.general, cisco.ios, pfsensible.core
-│   ├── site.yml                # point d'entrée : import_playbook 00 → 10 → 30
-│   ├── 10-bootstrap.yml        # appels du rôle redfish_bootstrap (connection: local)
-│   ├── 00-network.yml          # appels des rôles ios_switch et pfsense
-│   ├── 30-config.yml           # ex-contenu de site.yml (rôles sur vms:!lxc)
-│   ├── inventory/
-│   │   ├── zones/              # axe « où » : zones réseau
-│   │   │   └── mgmt.yml / dmz.yml / prod.yml   # repris d'infra04 (ansible_host ici)
-│   │   ├── baremetal.yml       # axe « quoi » : machines physiques (pve01, pve02)
-│   │   ├── vms.yml / lxc.yml   # axe « quoi » : VMs, conteneurs
-│   │   ├── network.yml         # network → switches (l3sw, l2sw) + firewall (pfsense), IP ici
-│   │   ├── group_vars/
-│   │   │   ├── all/
-│   │   │   │   └── vars.yml    # ex-all.yml, en clair
-│   │   │   ├── baremetal/
-│   │   │   │   ├── vars.yml    # ilo_validate_certs, iso_url, pve_install_* communs
-│   │   │   │   └── vault.yml   # vault_ilo_password_pveXX, vault_pve_root_password_pveXX
-│   │   │   ├── switches/       # network_cli, paramiko, admin ; vault = mdp par switch
-│   │   │   ├── firewall/       # pfSense admin ; vault = mdp pfSense
-│   │   │   ├── proxmox.yml / vms.yml / lxc.yml   # ansible_ssh_private_key_file
-│   │   │   └── automation.yml, lab.yml, dns.yml, …   # inchangés
-│   │   └── host_vars/
-│   │       ├── pve01.yml / pve02.yml   # iLO + pve_install_* propres à l'hôte
-│   │       └── l2sw/ / l3sw/   # vars.yml (mdp → vault, particularités IOS)
-│   │                           # + ios_resources.yml (config du switch as code)
-│   └── roles/
-│       ├── redfish_bootstrap/  # couche 10 : probe, media_test, build_iso, install ; ilo4/
-│       ├── ios_switch/         # couche 00 : snapshot, parse, apply (resources | rendered)
-│       ├── pfsense/            # couche 00 : snapshot (config.xml)
-│       └── common, users, ssh-hardening, cis-hardening   # couche 30 (infra04)
-├── 10-bootstrap/               # hors Ansible : Dockerfile, iso/ et build/ (gitignorés)
-├── 20-proxmox/                 # Terraform bpg/proxmox
-├── build/                      # gitignoré : snapshots réseau (build/network/<hôte>/)
-├── key/                        # gitignoré : clé SSH automation (ansible, ansible.pub)
-├── docs/
-│   └── context.md              # ce fichier
-├── Makefile                    # make bootstrap / network / vms / config
-├── .gitignore
-└── README.md
+├── Makefile                    # une cible par étape, CONFIRM=yes pour écrire
+├── network/addressing.yml      # SOURCE UNIQUE de l'adressage (DHCP, DNS, IP des guests, amonts rproxy)
+├── ansible/
+│   ├── 00-network.yml 05-storage.yml 10-bootstrap.yml 30-config.yml 40-k8s.yml preflight.yml site.yml
+│   ├── inventory/              # zones/ (où, ansible_host) + baremetal/vms/lxc/network/storage (quoi)
+│   │   ├── group_vars/<groupe>/{vars,vault}.yml
+│   │   └── host_vars/          # pveXX (iLO, install), l2sw/l3sw (ios_resources.yml)
+│   ├── roles/                  # un rôle par sujet, README réel chacun
+│   └── files/                  # backup pfSense chiffré, tableaux de bord Grafana
+├── 10-bootstrap/               # Dockerfile de l'ISO auto-install (iso/, build/ gitignorés)
+├── 15-templates/               # Packer (variables : make templates-vars)
+├── 20-proxmox/                 # Terraform (un fichier par guest, ha.tf, locals.tf)
+├── 40-k8s/                     # manifests + kustomization (Secret Postgres généré)
+├── docs/                       # ce fichier, runbook, existant-piscine
+├── build/ key/                 # gitignorés : relevés réseau, clé d'automatisation
+└── .ansible-lint .yamllint     # make lint : profil production
 ```
 
-Pourquoi pas un `ANSIBLE_CONFIG` partagé avec un dossier par couche : les
-chemins relatifs (rôles, inventaire) cassent selon le dossier de lancement.
+Rôles : couche 00 `ios_switch`, `pfsense` ; 05 `synology_storage` ; 10
+`redfish_bootstrap`, `pve_config`, `pbs_config` ; 30 `common`, `users`,
+`ssh-hardening`, `cis-hardening` (infra04), `dnsmasq`, `lxc_access`,
+`rproxy`, `gitea`, `node-exporter`, `prometheus`, `alertmanager`,
+`pve-exporter`, `snmp-exporter`, `snmptrapd`, `grafana` (infra06),
+`k3s-control`, `k3s-worker` (infra05) ; 40 `k8s_apps` ; outils `preflight`.
 
-- **Renumérotation (2026-10-29)** : les numéros suivent l'ordre d'exécution
-  → `00-network` (switchs + pfSense) puis `10-bootstrap` (bare metal), car
-  iLO, NAS et hyperviseurs dépendent du réseau. `git mv` (historique
-  conservé) du dossier `10-bootstrap/` (ex-`00-…`) et des deux playbooks ;
-  chemins (`pve_iso_source`, `pve_iso_build_dir`, contexte Docker), imports
-  de `site.yml` (réordonnés) et docs mis à jour. Trous de 10 en 10 pour
-  insérer une couche (Synology → `05-storage`). Dans ce fichier, les numéros
-  ont été convertis au nouveau schéma (les messages de commit gardent
-  l'ancien).
-- **Playbooks à la racine d'`ansible/`** (pas de sous-dossier `playbooks/`) :
-  à côté de `roles/`, ils trouvent les rôles sans config ; 4 playbooks ne
-  justifient pas un dossier.
-- **Playbooks = aiguillages, toute la logique dans des rôles** (refactor du
-  2026-10-29). Rôles créés avec `ansible-galaxy role init` (cohérent avec les
-  rôles d'infra04), README réel par rôle, `tasks/main.yml` = l'action sans
-  danger (lecture seule). Une action par fichier de tâches, appelée par
-  `import_role` + `tasks_from` + tag. **`roles:` au niveau du play ignore
-  `tasks_from`** (testé : il lance `main.yml`) → `import_role` est la façon
-  documentée d'appeler un point d'entrée précis. **Même syntaxe partout** :
-  `30-config.yml` (ex-`site.yml` d'infra04, en `roles:`) converti aussi en
-  `import_role` (comportement identique : statique, tags et handlers
-  importés ; `--list-tasks` identique avant/après, 25 tâches). Tâches incluses
-  dynamiquement : `include_tasks` + `apply: {tags: [always]}`, sinon elles
-  sont filtrées par `--tags`.
-  - `redfish_bootstrap` : `probe`, `media_test`, `build_iso`, `install` ;
-    appels propres au BMC dans `tasks/<redfish_vendor>/` (`ilo4/` :
-    media_state, media_insert, media_eject, boot_once), réutilisés par
-    media_test et install (plus de duplication). iLO 5 = un dossier de plus.
-    Templates `answer.toml.j2` et `first-boot.sh.j2` dans le rôle.
-    `module_defaults` (identifiants iLO pour `uri`) dans le playbook.
-  - `ios_switch` : `snapshot` (écrit aussi `ios_resources.yml` *proposé*
-    dans `build/` → diff avec les host_vars pour voir une modif faite à la
-    main), `parse` (hors ligne, cible 127.0.0.1), `apply` →
-    `apply_resources` | `apply_rendered`. Transformation brut → host_vars =
-    filtre versionné `filter_plugins/ios_resources.py`
-    (`ios_resources_prune`, `ios_vlans_from_config`) : reproduit à
-    l'identique les host_vars commités (vérifié).
-  - `pfsense` : `snapshot` (config.xml) ; pfsensible.core ensuite.
-  - Validation du refactor : local (filtre identique, garde-fou install,
-    build-iso inchangé à l'octet, candidat l3sw identique) puis prod en
-    lecture seule (snapshots = host_vars, `apply --check` = 0 changement
-    sur les 2 switchs, probe iLO pve01 + pve02).
-- **`site.yml` = point d'entrée** (convention Ansible) : uniquement des
-  `import_playbook`. Chaque couche reste lançable seule. 00 et 10 sont
-  commentés tant qu'ils sont vides (un import de playbook vide échoue).
-- **`group_vars/all/` en dossier** : `ansible-vault` chiffre un fichier entier →
-  `vars.yml` en clair (grep/diff lisibles), `vault.yml` chiffré. Convention :
-  secrets préfixés `vault_`, référencés depuis `vars.yml`
-  (`ilo_password: "{{ vault_ilo_password }}"`). Alternative écartée :
-  `ansible-vault encrypt_string` dans un seul `all.yml`.
-- **Inventaire à deux axes** : `zones/` (mgmt, dmz, prod = *où*, porte les
-  `ansible_host`) et fichiers racine `baremetal` / `vms` / `lxc` (= *quoi*,
-  ne citent que les noms d'hôtes ; Ansible fusionne → chaque donnée définie
-  une seule fois). Dossier nommé `zones/` et pas `network/` pour ne pas
-  confondre avec la couche 00.
-- **Groupes d'inventaire** : `proxmox` → enfants `pve` (pve01, pve02) et
-  `backup` (pbs ; renommé pour éviter un groupe et un hôte de même nom).
-  Groupe à part **`baremetal`** (pve01, pve02, listés directement, pas
-  `children: pve`) = cible de `10-bootstrap.yml` : on groupe par *ce dont le
-  play a besoin* (un iLO, pas d'OS) et non par rôle. `pve` et `baremetal`
-  coïncident aujourd'hui, pas forcément demain. Le pbs (VM) n'y est pas.
-- **Variables iLO** : l'iLO est un *attribut* de l'hôte (pas un hôte à part :
-  une seule identité, `--limit pve01` vise iLO + OS). Comptes différents par
-  iLO (`admin_teemo` pve01, `admin_yuumi` pve02) → `ilo_host`, `ilo_user`,
-  `ilo_password: "{{ vault_ilo_password_pveXX }}"` dans `host_vars/` ; un
-  seul vault de groupe `group_vars/baremetal/vault.yml` (variante choisie
-  plutôt qu'un vault par hôte). Rien dans `all/` (moindre exposition).
-  `ilo_host` = **IP**, pas un nom DNS (dhcp-dns n'existe pas en rebuild).
-- **Mot de passe du vault** : `vault_password_file=~/.ansible/.vault_pass_cloud1`
-  dans `ansible.cfg` (hors repo, `600`). Aussi rangé dans Bitwarden.
-  Évolution possible : script exécutable qui fait `bw get password`.
-- **Valeurs dans le vault** : guillemets simples `'...'` (rien n'y est
-  interprété sauf `''`). Si un mot de passe contient `{{` ou `{%` : tag
-  `!unsafe` (sinon Ansible le templatise, même entre guillemets).
-- Réflexe : `ansible-inventory --graph` après chaque modif d'inventaire (une
-  erreur d'indentation fait disparaître des hôtes sans erreur).
+## Sources de vérité
 
-### Prérequis de la machine de contrôle (laptop)
-Repris dans le `README.md`.
-- Ansible via pipx + **`pipx inject ansible passlib`** (filtre `password_hash`
-  sous Python 3.13+, le module `crypt` a disparu).
-- Collections : `ansible-galaxy collection install -r ansible/requirements.yml`.
-- Fichier de mot de passe du vault `~/.ansible/.vault_pass_cloud1` (`600`).
-- Clé SSH automation dans **`key/`** (gitignoré, `700`/`600`), copiée depuis
-  le repo piscine ; à remettre à la main sur une machine neuve (runbook).
-- **`pipx inject ansible ansible-pylibssh 'paramiko<4'`** : les switchs (IOS
-  12.2 / 15.2) n'offrent que du kex SHA-1 ; la libssh embarquée dans
-  pylibssh est compilée sans, paramiko ≥ 4 l'a retiré → **paramiko 3.5**.
-- Collection `pfsensible.core` (dans `requirements.yml`).
-- Node/npx (`npx http-server` pour servir l'ISO, Range requis).
-- Docker (conteneur Debian pour `proxmox-auto-install-assistant`).
+- **Adressage** : `network/addressing.yml` (réseaux, réservations, une ligne
+  par machine, services derrière rproxy). Ajouter une VM = une ligne + son
+  `vm_*.tf`, puis `make vms-apply` et `make dns-apply` (`network/README.md`).
+- **Personnes** : `users_admins` (`group_vars/all/vars.yml`) → comptes admin
+  des VMs, clés `root` des LXC (`lxc_access`), clés du compte Gitea.
+- **Repo** : Gitea (`ssh://git@gitea01.cloud-1.fun:2222/gitea-admin/cloud-1.fun.git`,
+  compte `gitea-admin`) → push mirror vers `github.com/pieric-ux/cloud-1.fun`
+  à chaque push. En rebuild total : cloner GitHub.
+- **État Terraform** : HCP Terraform, organisation `cloud-1-fun`, workspace
+  `cloud-1-proxmox`, exécution locale (jeton utilisateur dans
+  `~/.terraform.d/credentials.tfrc.json`).
+- **Secrets** : vaults Ansible (mot de passe `~/.ansible/.vault_pass_cloud1`,
+  `600`, aussi dans Bitwarden). Clé de chiffrement des backups hors site :
+  dans le vault `pve` **et** Vaultwarden.
 
-### .gitignore minimum (dès le 1er commit)
-Terraform écrit des secrets en clair dans le state + ISOs lourds.
-```
-# Terraform
-**/.terraform/*
-*.tfstate
-*.tfstate.*
-*.auto.tfvars
-*.tfvars
-crash.log
-# Secrets
-*.vault
-vault-password*
-*.pem
-*.key
-*.ovpn
-# Artefacts lourds
-*.iso
-*.img
-```
-Réflexes défendables : versionner des `terraform.tfvars.example` (sans valeurs
-sensibles) ; tfstate local gitignoré (backend propre type Synology/MinIO à voir
-plus tard, pas dans le repo).
-
-## Conventions héritées de l'infra existante (repo piscine)
-
-À réutiliser pour rester cohérent (vérifier les valeurs exactes dans
-`~/Documents/42-piscine-infra/infra04/ansible/inventory/` avant de s'en servir) :
-
-- **Domaine externe/DNS hosts** : `cloud-1.fun` (ex : `pve01.cloud-1.fun`).
-- **Domaine interne** : `infra.lab`.
-- **Hyperviseurs** : `pve01`, `pve02` (physiques, iLO 4 firmware 2.82,
-  licence Advanced) ; backup : `pbs` = **VM** (couches 20/30, pas 00).
-- **Stockage VM partagé** : LVM sur iSCSI Synology, nommé **`synology-lvm`**.
-- **Bridge** : `vmbr0` VLAN-aware.
-- **VLANs** : Management, Production, Storage, DMZ, VPN.
-- **VM de service n°1** : `dhcp-dns` (dnsmasq, domaine `infra.lab`, sur VLAN mgmt
-  — vu à `10.1.240.31` dans l'inventaire).
-- **Autres hôtes mgmt** déjà dans l'inventaire : `vault` (HashiCorp Vault LXC),
-  `rproxy-int`, `ansible`, `grafana`, `prometheus`.
-- **Rôles Ansible existants** (`infra04/ansible/roles/`) : `common`,
-  `ssh-hardening`, `users`, `cis-hardening`. (`infra06` : `node-exporter`,
-  `prometheus`, `grafana`, `alertmanager`, `pve-exporter`, `snmp-exporter`.)
-- **Templates Packer existants** : `infra04/packer/` (ubuntu2404, debian13,
-  alpine) — base pour la couche 2.
-
-> Le repo piscine reste la **référence** (docs par module, rôles déjà écrits).
-> Ici on construit la version *transverse et orchestrée*.
+| Vault (`group_vars/…/vault.yml`) | Contenu |
+|---|---|
+| `baremetal` | iLO, mots de passe root des nœuds |
+| `switches`, `firewall`, `host_vars/pfsense` | switchs, pfSense, OpenVPN ; backup pfSense chiffré : `ansible/files/pfsense/config.xml.vault` |
+| `pve` | CHAP iSCSI, jetons PBS, clé hors site, jetons Terraform et Packer (secret seul) |
+| `backup` | `token.shadow` PBS, mot de passe du remote, clé `offsite-key` |
+| `storage` | compte DSM |
+| `monitoring` | jeton pve-exporter, communauté SNMP |
+| `k3s` | jeton du cluster, mot de passe Postgres |
+| `rproxy` | identifiants Infomaniak (certbot DNS-01) |
+| `git` | secrets Gitea, mot de passe `gitea-admin`, jeton GitHub (miroir) |
 
 ## Couche 10 — constats et choix
 
@@ -619,159 +435,59 @@ le vault) pour savoir reconstruire, puis `pfsensible.core` objet par objet
   recommandé (tls-auth : protège l'accès au serveur, ne déchiffre pas le
   trafic) puis redistribuer les configs clientes, backup, régénérer le vault.
 
-## Où on en est / prochaine étape
+## Pièges appris (à connaître avant de toucher au code)
 
-- [x] Décisions d'archi tranchées (ci-dessus).
-- [x] Dossier `~/Documents/cloud-1-iac` créé + ce `context.md` (dans `docs/`).
-- [x] `git init` + `.gitignore` (généré gitignore.io : terraform, ansible,
-      packer, macos ; règles projet ajoutées au fur et à mesure — secrets en
-      priorité). `.terraform.lock.hcl` volontairement versionné.
-- [x] Dossier `ansible/` repris d'`infra04` (inventaire, rôles, cfg, site.yml).
-- [x] Restructuration vers le layout ci-dessus (`00-network/` et `30-config/`
-      supprimés, `ansible.log` gitignoré,
-      `group_vars/all/vars.yml`, `site.yml` → imports, `requirements.yml`).
-      `--syntax-check site.yml` et `ansible-inventory --graph` OK.
-- [x] Inventaire refait (zones/, baremetal, backup) — `ansible-inventory
-      --graph` sans warning.
-- [x] 1er commit (amend à venir pour inclure l'inventaire).
-- [x] Accès iLO : `host_vars` pve01/pve02, vault de groupe, fichier de mot de
-      passe du vault.
-- [x] `10-bootstrap.yml` **lecture seule** (`redfish_info` Systems/Manager +
-      `uri` GET brut VirtualMedia/2 et Systems/1) — OK sur pve01 et pve02.
-- [x] Clé SSH dans `key/` (gitignoré) ; `private_key_file` déplacé du cfg vers
-      les groupes Linux.
-- [x] **Couche 10, étape 2** : ISO servi par `npx http-server` (laptop
-      `10.1.240.111`, même sous-réseau mgmt que les iLO → pas de routage),
-      Range vérifié (206). `iso_url` dans `group_vars/baremetal/vars.yml`.
-      Bloc montage/éjection dans `10-bootstrap.yml`, tag `never, media-test`
-      (jamais exécuté par défaut), éjection en `always`, assert
-      `BootOnNextServerReset` false. **Testé OK sur pve02** (monté + éjecté,
-      aucun impact). Constat : l'iLO 4 fait un `GET <iso>` au montage et un
-      `GET <iso>?EJECT` à l'éjection (User-Agent vide).
-- [x] Couche 10, étape 3 (partiel) : méthode de boot tranchée (HPE),
-      template `answer.toml.j2` + variables par hôte, mot de passe root haché
-      au rendu (passlib installé), rendu validé.
-- [x] Couche 10, étape 3 : hook first-boot réseau, build ISO par hôte
-      (`--tags build-iso`), answer validé par l'outil officiel, 2 ISO construits.
-- [x] Couche 10, étape 4 : play d'install destructif écrit (`never, install` +
-      confirmation). **Non exécuté** — test en fin de lab.
-- [ ] Gitea en LXC + push-mirror GitHub.
-- [ ] Synology dans le périmètre (partage ISO + iSCSI) — exploration API.
-- [x] Couche 00, étape 1 : snapshots lecture seule l2sw + l3sw, YAML des
-      ressources (l2sw gathered, l3sw parsed hors ligne), VTP transparent.
-- [ ] Couche 00, suite : pfSense (SSH), host_vars des switchs + `--check
-      --diff` à zéro, `no vstack`, durcissement, Oxidized (plus tard).
-- [ ] Couches 20 → 30, puis Makefile.
+- **Terraform / bpg** : un guest déplacé par la HA ferait *remplacer* la VM
+  (nouveau nœud = nouvelle VM pour le provider) → `ignore_changes =
+  [node_name]` sur les 10 guests HA. Sur un clone sans bloc `cpu`, le provider
+  met `qemu64` → CPU toujours explicite (`Haswell-noTSX-IBRS` + flags).
+  `replicate` par défaut à `true` ≠ Proxmox. Les VMs importées n'ont pas de
+  bloc `clone` : un `apply` qui *crée* une VM restaurable la créerait vide.
+- **Proxmox** : un commentaire d'utilisateur est coupé à la virgule. Les
+  règles HA PVE 9 refusent deux modifications simultanées (réessayer). En
+  PVE 9, `VM.Monitor` n'existe plus (`VM.GuestAgent.*`).
+- **DSM 6.2** : les API `entry.cgi` décodent chaque paramètre en JSON (envoyer
+  `"2"` pour une chaîne). `Share.create` refuse `shareinfo` en clair (chiffré
+  par le navigateur) → partage NFS manuel. La suppression d'une LUN est
+  asynchrone. Le WWID multipath ne se déduit pas de l'uuid de la LUN.
+- **Switchs** : l3sw en mode `rendered` (`ios_config`) ne voit que ce qui
+  *manque*, pas ce qui est en trop ; l2sw en ressources (`replaced`).
+- **Template Debian** : l'ancienne recette `atomic` mettait la swap après la
+  racine (pas d'agrandissement par cloud-init) → corrigé dans le preseed,
+  8005 reconstruit ; le 8002 de l'équipe a encore l'ancien partitionnement.
+- **Prometheus / SNMP** : la prod avait des ajouts à la main (jobs et modules
+  STP, auth `rack_v2_vlan240` = communauté + `@240`) → repris dans les rôles.
+- **k3s** : `get.k3s.io` change en amont → script figé sur la release.
+- **vault-01** : conteneur applicatif (image OCI Vaultwarden, Alpine sans
+  SSH ni Python) → hors Ansible, revient par restauration de `/data`.
+- **Poste de contrôle** : sur le VLAN MGMT sans VPN, OrbStack a besoin de la
+  permission macOS *Réseau local*. zsh ne découpe pas `$VAR` en mots (passer
+  par une fonction). Un `git add` avec un chemin absent échoue en entier.
+- **Ansible 2.21** : pas de conversion fiable texte → dict après une boucle
+  Jinja (filtres purs), `vars` n'est plus fiable (utiliser `query('varnames')`),
+  échappements `\1` fragiles dans les blocs YAML repliés (préférer `split`,
+  `splitext`, `dict2items(key_name=...)`).
 
-### Couche 20 — Terraform (squelette, 2026-10-29)
-`20-proxmox/` : provider `bpg/proxmox` **~> 0.119** (validé : 0.119.0,
-`.terraform.lock.hcl` versionné), Terraform >= 1.5, état local gitignoré,
-`terraform.tfvars` gitignoré (`.example` versionné), **lecture seule** :
-`data "proxmox_virtual_environment_vms"` + output. Pas de ressource écrite à
-la main : les VMs existent, le 1er plan voudrait les remplacer. Étape 2 :
-blocs `import` (`imports.tf`, fait le 2026-11-04) + `terraform plan
--generate-config-out` → code généré depuis les VMs réelles (0 écart, comme
-`gathered`). Terraform non installé localement → image
-`hashicorp/terraform:1.9.8` (`make vms-init` / `make vms-plan`). Token API
-`terraform@pve!iac` à créer (Datacenter > Permissions > API Tokens).
+## Ce qui reste manuel ou hors du code
 
-### Existant du repo piscine (relevé 2026-10-30)
-Tout ce qui servira aux couches suivantes est consolidé dans
-**`docs/existant-piscine.md`** : cluster (HA, règles d'affinité, modèle CPU
-Haswell pour la migration), stockage (iSCSI, masking, multipath, NFS ISO),
-inventaire des guests avec VMID/stockage/nœud/HA (pour Terraform), templates
-Packer, supervision infra06 (6 rôles), k3s infra05, et la **copie hors site
-des backups (PBS distant, sync push chiffré : clé de chiffrement
-indispensable pour restaurer)**. Le pbs est sur `local-lvm` de pve02
-**volontairement** (survit à une panne du NAS). Couche 30 : README réels des
-4 rôles d'infra04, chemins `group_vars/all/vars.yml` corrigés,
-`make config-check`.
+- Point zéro (console des switchs, pfSense, DSM, iLO, RAID, ISO), création du
+  cluster + join + qdevice, installation de la VM PBS, partage NFS du NAS,
+  restaurations (runbook).
+- Hors code : le PBS distant (Infomaniak), le qdevice03 (seul node-exporter),
+  vault-01, les VMs de test (captive-portal, sorti de Terraform et du DNS ;
+  son port l2sw Gi1/0/39 `MR600-CAPTIVE` est gardé actif tant que le test
+  dure), le template 8002 de l'équipe.
+- Limites acceptées pour le lab : Postgres sur `local-path` (k3s-worker-1),
+  Alertmanager sans notifications, tableaux de bord Grafana importés à la
+  main, compte DSM `admin`.
 
-### Qualité — ansible-lint (2026-10-29)
-`ansible-lint` 26.10 (pipx, environnement séparé ; collections du venv
-Ansible via `ANSIBLE_COLLECTIONS_PATH`) : 268 remarques → **0, profil
-`production`**. Corrigé : `changed_when` sur les commandes qui modifient,
-noms de tâches/plays, `---`, métadonnées génériques des rôles d'infra04,
-`# SPDX`, tests galaxy. `# noqa: args[module]` sur les tâches pfSense en
-`"{{ item }}"` (lint ne lit pas les paramètres templatés ; validés en réel
-par les `--check`). Écartés **avec justification** dans `.ansible-lint` :
-`var-naming[no-role-prefix]` (variables par domaine partagées inventaire /
-rôles), `role-name` (rôles à tiret d'infra04). `.yamllint` : séquences
-indentées ou non (fichiers générés), vaults ignorés (chiffrés). `make lint`.
+## Prochaines étapes possibles
 
-### ⚠️ Avant le test de réinstallation (lu le 2026-10-29)
-- **La VM `pbs` (2400) et son datastore sont sur le `local-lvm` de pve02**
-  (disques `vm-2400-disk-0/1`), donc sur le RAID que l'install efface.
-  **Décision pieric (2026-10-29) : acceptable**, les backups ont une copie
-  distante. Conséquence : après une réinstallation de pve02, la VM `pbs`
-  doit être recréée (couche 20) ou restaurée depuis la copie distante ;
-  d'ici là, le job de backup vers `pbs-store1` échoue. Si possible le
-  garder (« tant mieux ») : **garde-fou ajouté à `install.yml`** qui liste
-  (SSH, lecture seule) les volumes de guests sur le `local-lvm` du nœud et
-  s'arrête s'il y en a, sauf `-e pve_install_allow_local_guests=true` ;
-  avant l'install : `qm migrate 2400 pve01 --with-local-disks` (non testé
-  en réel : commande root bloquée en remote).
-- Après une réinstallation, le nœud doit **retrouver son IQN iSCSI** (le
-  masking du NAS refuse tout autre initiateur) et **rejoindre le cluster**
-  (`INFRA-CLUSTER`, qdevice `qdevice03` `10.1.240.13`) : rôle `pve_config`
-  (validé en --check le 2026-10-30) + procédure manuelle de re-join dans `tasks/cluster.yml`.
-
-### Reprise suggérée pour la nouvelle session
-0. **Pause du 2026-10-28 soir — où on s'est arrêté :**
-   - l2sw : `--tags apply --check` = **zéro changement** (commité). Valeurs par
-     défaut IOS rendues explicites sur les SVI (`redirects`, `unreachables`,
-     IPv6 = true) : avec `replaced`, `ios_l3_interfaces` envoie sinon
-     `no ip redirects` (code `handle_defaults` du module).
-   - l3sw (mode `rendered`) : **zéro changement au `--check` (2026-10-29)**.
-     Le timeout venait du candidat écrit avec des `\n` littéraux (une seule
-     ligne) → construction déplacée dans `roles/ios_switch/templates/ios_candidate.j2`
-     (liste de lignes), écrite dans `build/network/l3sw/candidate.cfg`
-     (`src` d'`ios_config` attend un chemin). Normalisation à l'affichage
-     IOS 12.2 : `no shutdown` retiré, `deny` + 3 espaces, pas de `host` en
-     ACL standard. Test sans toucher au switch : `-e ansible_host=127.0.0.1`
-     puis diff hors ligne `NetworkConfig` (moteur d'`ios_config`) contre la
-     running-config sauvegardée. Limite : `ios_config` voit ce qui
-     *manque*, pas ce qui est *en trop* sur le switch.
-   - Historique réécrit (messages détaillés, sans attribution) ; ancienne
-     version dans la branche `backup-before-reword` (à supprimer).
-   - Serveur `npx` arrêté.
-   - 2026-10-29 : couches 00 et 10 refactorées en rôles (`redfish_bootstrap`,
-     `ios_switch`, `pfsense`), validées en local puis en lecture seule sur
-     la prod (voir « Playbooks = aiguillages »). Le probe iLO de pve02 a
-     renvoyé 401 (`NoValidSession`) : le mot de passe d'`admin_yuumi` dans
-     le vault ne correspondait plus à l'iLO ; `vault.yml` (baremetal) mis à
-     jour par pieric, probe OK ensuite.
-   - **Rôle `pve_config`** (validé en `--check --diff` sur la prod le 2026-10-30, CHAP dans `group_vars/pve/vault.yml`) écrit d'après la doc
-     du module 03 : dépôts, /etc/hosts, NTP, IQN iSCSI enregistré, CHAP,
-     multipath, stockages cluster ; tag `never, pve-config` dans
-     `10-bootstrap.yml`. À valider après le relevé réel des nœuds (bloqué
-     en remote : commande root sur les hyperviseurs → à lancer par pieric).
-     Secret CHAP à mettre dans un vault.
-   - À faire ensuite : pfSense (SSH bloqué, sshguard ?), relevé des pve
-     (`no vstack` explicite, vty `access-class`, `no ip http server`).
-1. Lire ce `context.md`.
-2. Couche 10 écrite de bout en bout ; seul reste le **test réel de l'install
-   en fin de lab** : vider un nœud, prévenir le groupe, servir
-   `10-bootstrap/build/` en npx, `--tags install --limit pveXX -e
-   pve_install_confirm=true`. Points à observer : hook réseau appliqué,
-   cluster/iSCSI à refaire après (couche suivante).
-- **Makefile (2026-10-29)** : une cible par étape dans l'ordre du rebuild
-  (`make help`) ; cibles qui modifient → `CONFIRM=yes` (+ `HOST=` par nœud),
-  en plus des confirmations des playbooks. Vérifié en simulation (`make -n`)
-  et garde-fous, rien lancé.
-3. Couche 00 : intégrer le parsing hors ligne du l3sw au repo (aujourd'hui
-   dans un playbook temporaire), YAML → `host_vars/l2sw.yml` / `l3sw.yml`
-   (VLAN gérés sur les **deux** switchs depuis le passage en transparent),
-   `--check --diff` = zéro changement ; débloquer SSH pfSense ;
-   `show vstack config` / `no vstack`.
-4. Preflight fait (`ansible-playbook preflight.yml`) : chaque zone dans un
-   block/rescue (un échec est enregistré, pas fatal : sinon un play dont tous
-   les hôtes échouent arrête le playbook), verdict final. 1er lancement :
-   tout OK sauf **pfSense SSH fermé** (port 22 fermé sur toutes ses adresses,
-   443 ouvert → pas sshguard ; à vérifier dans l'UI : SSH activé ? sshd ?).
-6. Passage en rôle `redfish_bootstrap` (nommé par ce qu'il fait) une fois les
-   étapes connues : un fichier de tâches par étape, partie iLO 4 isolée
-   (comme `Debian.yml` / `Alpine.yml`), `assert` de confirmation (défaut
-   faux) avant le destructif.
-7. Ordre de rebuild : le pbs (VM) doit remonter tôt (restauration des autres
-   VMs) → Makefile / couche 20.
+1. **CI sur Gitea** (runner dans le rack) : lint + `--check` de chaque couche
+   à chaque push / chaque nuit — la vérification globale du 2026-11-04 a
+   trouvé une dérive à la main sur les switchs (VLAN 13) qu'un `apply` aurait
+   défaite.
+2. **VPN** : domaine de recherche `cloud-1.fun` poussé, un certificat par
+   appareil, rotation de la clé TLS OpenVPN (fuitée dans un log au début).
+3. Test réel de l'installation par l'iLO (sur place, groupe prévenu).
+4. Compte DSM dédié, PBS distant dans le code.
