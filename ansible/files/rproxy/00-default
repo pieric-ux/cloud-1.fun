@@ -1,0 +1,18 @@
+# Default server: names without a site of their own (typos, records added
+# before their site) are refused instead of reaching the first site loaded.
+server {
+    listen 80 default_server;
+    server_name _;
+    return 444;
+}
+
+server {
+    listen 443 ssl default_server;
+    http2 on;
+    server_name _;
+
+    ssl_certificate     /etc/letsencrypt/live/cloud-1.fun/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/cloud-1.fun/privkey.pem;
+
+    return 444;
+}
