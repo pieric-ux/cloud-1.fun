@@ -3,3 +3,6 @@
 # passwordless sudo. Created through pct, there is no SSH access before it.
 lxc_access_user: ansible
 lxc_access_keys: "{{ users_automation_keys }}"
+# Keys of root in the containers: the personal admin keys (users_admins),
+# like the admin accounts on the VMs.
+lxc_access_root_keys: "{{ users_admins | map(attribute='ssh_keys') | flatten }}"

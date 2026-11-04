@@ -10,7 +10,7 @@
   delegate_to: "{{ groups['pve'][0] }}"
   become: true
 
-- name: Automation account in the container
+- name: Automation account and root keys in the container
   ansible.builtin.command:
     argv:
       - pct
@@ -32,6 +32,10 @@
         echo '{{ lxc_access_user }} ALL=(ALL) NOPASSWD:ALL' > /tmp/ansible-sudo
         cmp -s /tmp/ansible-sudo /etc/sudoers.d/{{ lxc_access_user }} || { visudo -cqf /tmp/ansible-sudo && install -m 440 /tmp/ansible-sudo /etc/sudoers.d/{{ lxc_access_user }}; changed=yes; }
         rm -f /tmp/ansible-sudo
+        install -d -m 700 /root/.ssh
+        printf '%s\n' {% for key in lxc_access_root_keys %}'{{ key }}' {% endfor %}> /tmp/root-keys
+        cmp -s /tmp/root-keys /root/.ssh/authorized_keys || { install -m 600 /tmp/root-keys /root/.ssh/authorized_keys; changed=yes; }
+        rm -f /tmp/root-keys
         echo "changed=$changed"
   register: lxc_access_result
   changed_when: "'changed=yes' in lxc_access_result.stdout"
