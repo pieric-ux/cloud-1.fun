@@ -6,7 +6,7 @@ Guests of the Proxmox cluster with Terraform (`bpg/proxmox`).
 no change. One file per guest (`vm_<name>.tf`, `ct_<name>.tf` for the LXC
 containers); templates (Packer, layer 15) and stopped test VMs are left out.
 `inventory.tf` lists every VM of the cluster (output only). `ha.tf`: the 10
-HA resources and the 4 HA rules (PVE 9 rules, no HA groups), each HA
+HA resources and the 4 HA rules (PVE 9 rules, no HA groups; `proxmox_haresource` / `proxmox_harule`, the new names of the provider), each HA
 resource referencing its guest and each rule its HA resources, so a rebuild
 creates them in order (`imports_ha.tf` for their import).
 
