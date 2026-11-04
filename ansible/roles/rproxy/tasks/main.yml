@@ -1,4 +1,13 @@
 ---
+- name: Read the addressing of the rack
+  ansible.builtin.include_vars:
+    file: "{{ rproxy_addressing_file }}"
+    name: rproxy_addressing
+
+- name: Upstream addresses by host name
+  ansible.builtin.set_fact:
+    rproxy_ip: "{{ dict(rproxy_addressing.hosts | map(attribute='name') | zip(rproxy_addressing.hosts | map(attribute='ip'))) }}"
+
 - name: Nginx and certbot with its Infomaniak plugin
   ansible.builtin.apt:
     name: [nginx, certbot, python3-certbot-dns-infomaniak]
@@ -72,8 +81,8 @@
     state: started
 
 - name: Sites
-  ansible.builtin.copy:
-    src: "sites/{{ item }}"
+  ansible.builtin.template:
+    src: "sites/{{ item }}.j2"
     dest: "/etc/nginx/sites-available/{{ item }}"
     owner: root
     group: root

@@ -1,8 +1,14 @@
 ---
-# Sites of files/sites/, all enabled (one file per name, 00-default refuses
-# the names without a site). A file left in sites-enabled but not listed here
-# is reported, not removed.
-rproxy_sites: "{{ lookup('ansible.builtin.fileglob', role_path ~ '/files/sites/*', wantlist=True) | map('basename') | sort }}"
+# Sites of templates/sites/, all enabled (one file per name, 00-default
+# refuses the names without a site). A file left in sites-enabled but not
+# listed here is reported, not removed.
+rproxy_sites: >-
+  {{ lookup('ansible.builtin.fileglob', role_path ~ '/templates/sites/*.j2', wantlist=True)
+     | map('basename') | map('splitext') | map('first') | sort }}
+
+# Upstream addresses of the sites come from the addressing of the rack
+# (rproxy_ip['<host>']); the offsite PBS, outside the rack, stays literal.
+rproxy_addressing_file: "{{ playbook_dir }}/../network/addressing.yml"
 
 # Wildcard certificate of the domain, DNS-01 through the Infomaniak API.
 rproxy_domain: cloud-1.fun

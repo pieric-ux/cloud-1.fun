@@ -1,6 +1,6 @@
 upstream grafana {
     zone grafana 64k;
-    server 10.1.240.37:3000;
+    server {{ rproxy_ip['grafana01'] }}:3000;
     keepalive 2;
 }
 
