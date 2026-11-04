@@ -49,7 +49,7 @@ all:
           hosts:
             qdevice03:
               ansible_host: qdevice03.cloud-1.fun
-        cyber:
+        lab:
           hosts:
             c2-hak5:
               ansible_host: c2hak5.cloud-1.fun

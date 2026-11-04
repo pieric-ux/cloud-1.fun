@@ -130,7 +130,7 @@ cloud-1-iac/
 │   │   │   ├── switches/       # network_cli, paramiko, admin ; vault = mdp par switch
 │   │   │   ├── firewall/       # pfSense admin ; vault = mdp pfSense
 │   │   │   ├── proxmox.yml / vms.yml / lxc.yml   # ansible_ssh_private_key_file
-│   │   │   └── automation.yml, cyber.yml, dns.yml, …   # inchangés
+│   │   │   └── automation.yml, lab.yml, dns.yml, …   # inchangés
 │   │   └── host_vars/
 │   │       ├── pve01.yml / pve02.yml   # iLO + pve_install_* propres à l'hôte
 │   │       └── l2sw/ / l3sw/   # vars.yml (mdp → vault, particularités IOS)
