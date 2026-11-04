@@ -99,8 +99,10 @@ Alertmanager n'envoie encore aucune notification (récepteur `null`).
 Rôles `k3s-control` / `k3s-worker` d'infra05 (k3s `v1.31.4+k3s1`, Calico à
 la place de Flannel pour les NetworkPolicies), plays dans `30-config.yml`,
 jeton du cluster dans `group_vars/k3s/vault.yml`. Script d'installation figé
-sur la release (au lieu de `get.k3s.io`). Manifests (`infra05/k8s/module05/`:
-nginx + ingress, network policies, Postgres) pas encore repris.
+sur la release (au lieu de `get.k3s.io`). Manifests repris dans `40-k8s/`
+(rôle `k8s_apps`, `make k8s-check`), plus l'ingress `pieric-nginx` appliqué
+à la main ; mot de passe Postgres dans le vault k3s. `kubectl diff` sans
+écart.
 
 ## Sauvegardes hors site (→ restauration après rebuild)
 

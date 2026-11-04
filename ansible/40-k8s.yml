@@ -1,0 +1,22 @@
+---
+# Layer 40 - applications of the k3s cluster (role k8s_apps, manifests in
+# 40-k8s/).
+#   default     kubectl diff and apply (needs -e k8s_apply_confirm=true)
+#   --check     kubectl diff only
+
+- name: Applications of the k3s cluster
+  hosts: k3s_control
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Refuse a real run without explicit confirmation
+      ansible.builtin.assert:
+        that: ansible_check_mode or (k8s_apply_confirm | default(false) | bool)
+        fail_msg: >-
+          Real change on the k3s cluster: preview with --check, then re-run with
+          -e k8s_apply_confirm=true.
+
+    - name: Applications
+      ansible.builtin.import_role:
+        name: k8s_apps

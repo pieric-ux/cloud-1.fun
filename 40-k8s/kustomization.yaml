@@ -1,0 +1,15 @@
+# Applications of the k3s cluster (from infra05 module 05), applied by the
+# k8s_apps role (40-k8s.yml) with the Secret generated from the vault.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: default
+resources:
+  - nginx-configmap.yaml
+  - nginx-deployment.yaml
+  - nginx-ingress.yaml
+  - ingress-pieric.yaml
+  - netpol-default-deny.yaml
+  - netpol-allow-ingress.yaml
+  - postgres-statefulset.yaml
+  # Written by the role next to the manifests, never in the repo.
+  - postgres-secret.yaml

@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  author: pieric
+  description: Applications of the k3s cluster (40-k8s manifests), diffed then applied on the control plane
+  license: MIT
+  min_ansible_version: "2.17"
+dependencies: []

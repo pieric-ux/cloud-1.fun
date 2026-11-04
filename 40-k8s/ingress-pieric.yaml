@@ -1,0 +1,20 @@
+# Second host name for the nginx page, applied by hand before the repo
+# (recorded from the live cluster on 2026-11-04).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pieric-nginx
+  namespace: default
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: ingress.cloud-1.fun
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx
+            port:
+              number: 80

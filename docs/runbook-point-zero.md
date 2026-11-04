@@ -377,6 +377,18 @@ remplacement : restaurer sur le nœud du code.
 make config-check
 make config CONFIRM=yes
 ```
+Inclut la supervision (node-exporter, Prometheus, Grafana) et k3s (le
+control-plane d'abord, puis les workers un par un).
+
+### 8.10 Applications du cluster k3s
+
+```bash
+make k8s-check                    # kubectl diff, aucune écriture
+make k8s-apply CONFIRM=yes        # applique si différence
+```
+Le Secret Postgres vient du vault. Les données Postgres (volume
+`local-path` sur un nœud) ne reviennent que par la restauration de la VM de
+ce nœud (8.7).
 
 ---
 

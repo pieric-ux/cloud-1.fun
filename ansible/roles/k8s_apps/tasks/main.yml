@@ -1,0 +1,70 @@
+---
+# The manifests are applied from the control plane itself (k3s kubectl, admin
+# kubeconfig there): no kubectl nor kubeconfig needed on the controller. The
+# working copy is temporary; the Postgres Secret is generated from the vault
+# next to the manifests and removed with them.
+- name: Applications of the cluster
+  block:
+    - name: Temporary working directory
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: k8s-apps-
+      register: k8s_apps_dir
+      changed_when: false
+      check_mode: false
+
+    - name: Copy the manifests
+      ansible.builtin.copy:
+        src: "{{ k8s_apps_manifests_dir }}/"
+        dest: "{{ k8s_apps_dir.path }}/"
+        mode: "0600"
+      changed_when: false
+      check_mode: false
+
+    - name: Postgres Secret from the vault
+      ansible.builtin.copy:
+        dest: "{{ k8s_apps_dir.path }}/postgres-secret.yaml"
+        mode: "0600"
+        content: |
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: postgres-secret
+            labels:
+              app: postgres
+          type: Opaque
+          stringData:
+            POSTGRES_PASSWORD: {{ k8s_apps_postgres_password | to_json }}
+      changed_when: false
+      check_mode: false
+      no_log: true
+
+    # Exit code 1 = differences (kubectl masks the Secret values in a diff).
+    - name: Difference with the cluster
+      ansible.builtin.command: "{{ k8s_apps_kubectl }} diff -k {{ k8s_apps_dir.path }}"
+      register: k8s_apps_diff
+      changed_when: k8s_apps_diff.rc == 1
+      failed_when: k8s_apps_diff.rc > 1
+      check_mode: false
+
+    - name: Show the difference
+      ansible.builtin.debug:
+        msg: "{{ k8s_apps_diff.stdout_lines }}"
+      when: k8s_apps_diff.rc == 1
+
+    - name: Apply the manifests
+      ansible.builtin.command: "{{ k8s_apps_kubectl }} apply -k {{ k8s_apps_dir.path }}"
+      register: k8s_apps_apply
+      changed_when: k8s_apps_apply.stdout is search('created|configured')
+      when:
+        - k8s_apps_diff.rc == 1
+        - not ansible_check_mode
+
+  always:
+    - name: Remove the working copy (Secret included)
+      ansible.builtin.file:
+        path: "{{ k8s_apps_dir.path }}"
+        state: absent
+      when: k8s_apps_dir.path is defined
+      changed_when: false
+      check_mode: false

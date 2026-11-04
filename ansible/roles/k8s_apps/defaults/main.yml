@@ -1,0 +1,5 @@
+---
+# Manifests of the layer (kustomization), copied to the control plane.
+k8s_apps_manifests_dir: "{{ playbook_dir }}/../40-k8s"
+k8s_apps_kubectl: /usr/local/bin/k3s kubectl
+k8s_apps_postgres_password: "{{ vault_k8s_postgres_password }}"

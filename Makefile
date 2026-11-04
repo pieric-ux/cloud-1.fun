@@ -31,7 +31,7 @@ endef
 	bootstrap iso media-test serve-iso install pve-config-check pve-config pbs-config-check pbs-config \
 	storage-check storage-apply storage-apply-check templates-check templates \
 	vms-tfvars vms-init vms-plan vms-apply \
-	config-check config
+	config-check config k8s-check k8s-apply
 
 help: ## List the targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -154,3 +154,12 @@ config-check: ## Preview the OS configuration of the VMs (no change)
 config: ## Apply the OS configuration of the VMs (CONFIRM=yes)
 	$(call need_confirm,the VMs)
 	$(PLAYBOOK) 30-config.yml
+
+# --- 40 k8s: applications of the k3s cluster --------------------------------
+
+k8s-check: ## Diff the k3s applications (40-k8s) against the cluster (no change)
+	$(PLAYBOOK) 40-k8s.yml --check
+
+k8s-apply: ## Apply the k3s applications when they differ (CONFIRM=yes)
+	$(call need_confirm,the k3s cluster)
+	$(PLAYBOOK) 40-k8s.yml -e k8s_apply_confirm=true
