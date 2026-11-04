@@ -29,3 +29,6 @@
 
 - name: Backup jobs
   ansible.builtin.import_tasks: backup.yml
+
+- name: API access (roles, users, tokens, ACL)
+  ansible.builtin.import_tasks: access.yml

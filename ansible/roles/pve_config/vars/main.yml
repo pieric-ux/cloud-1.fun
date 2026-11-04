@@ -25,3 +25,44 @@ pve_vault_vars: "{{ query('varnames', '^vault_pve_') }}"
 pve_storage_secrets_unset: >-
   {{ pve_storages | subelements('secrets', skip_missing=true)
      | map(attribute='1.var') | reject('in', pve_vault_vars) | list }}
+
+# API access (access.yml): live roles, users (with their tokens) and ACL.
+pve_roles_live: "{{ pve_access_status.results[0].stdout | from_json }}"
+pve_users_live: "{{ pve_access_status.results[1].stdout | from_json }}"
+pve_acls_live: "{{ pve_access_status.results[2].stdout | from_json }}"
+
+pve_roles_missing: "{{ pve_roles | rejectattr('id', 'in', pve_roles_live | map(attribute='roleid')) | list }}"
+# "id|sorted privileges" signatures that differ, on existing roles only.
+pve_roles_differing: >-
+  {{ pve_roles | selectattr('id', 'in',
+       pve_roles | map(attribute='id') | zip(pve_roles | map(attribute='privs') | map('sort') | map('join', ','))
+       | map('join', '|')
+       | difference(pve_roles_live | map(attribute='roleid')
+                    | zip(pve_roles_live | map(attribute='privs', default='') | map('split', ',') | map('sort') | map('join', ','))
+                    | map('join', '|'))
+       | map('split', '|') | map('first') | list)
+     | rejectattr('id', 'in', pve_roles_missing | map(attribute='id')) | list }}
+
+pve_users_missing: "{{ pve_users | rejectattr('id', 'in', pve_users_live | map(attribute='userid')) | list }}"
+pve_users_differing: >-
+  {{ pve_users | selectattr('id', 'in',
+       pve_users | map(attribute='id') | zip(pve_users | map(attribute='comment', default='')) | map('join', '|')
+       | difference(pve_users_live | map(attribute='userid')
+                    | zip(pve_users_live | map(attribute='comment', default='')) | map('join', '|'))
+       | map('split', '|') | map('first') | list)
+     | rejectattr('id', 'in', pve_users_missing | map(attribute='id')) | list }}
+
+pve_tokens_live: >-
+  {{ pve_users_live | selectattr('tokens') | subelements('tokens') | map(attribute='0.userid')
+     | zip(pve_users_live | selectattr('tokens') | subelements('tokens') | map(attribute='1.tokenid'))
+     | map('join', '!') | list }}
+pve_tokens_missing: "{{ pve_tokens | rejectattr('id', 'in', pve_tokens_live) | list }}"
+
+pve_acls_missing: >-
+  {{ pve_acls | zip(pve_acls | map(attribute='path')
+                    | zip(pve_acls | map(attribute='role'), pve_acls | map(attribute='ugid'))
+                    | map('join', '|'))
+     | rejectattr('1', 'in', pve_acls_live | map(attribute='path')
+                    | zip(pve_acls_live | map(attribute='roleid'), pve_acls_live | map(attribute='ugid'))
+                    | map('join', '|') | list)
+     | map(attribute='0') | list }}

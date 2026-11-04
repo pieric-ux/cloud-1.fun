@@ -10,7 +10,7 @@ variable "proxmox_url" {
 variable "proxmox_username" {
   description = "API token ID (user@realm!token)"
   type        = string
-  default     = "packer@pve!packer-token"
+  default     = "packer@pve!pieric"
 }
 
 variable "proxmox_token" {

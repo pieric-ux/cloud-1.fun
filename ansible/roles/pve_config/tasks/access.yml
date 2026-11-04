@@ -1,0 +1,127 @@
+---
+# API access, cluster-wide (/etc/pve/user.cfg): roles, users, tokens, ACL.
+# Through the API (pvesh). Created when missing; role privileges and user
+# comments set when they differ; nothing extra on the cluster is removed.
+- name: Read roles, users and ACL
+  ansible.builtin.command: "pvesh get {{ item }} --output-format json"
+  register: pve_access_status
+  changed_when: false
+  check_mode: false
+  # Users with --full: their tokens come along.
+  loop: [/access/roles, /access/users --full 1, /access/acl]
+  run_once: true
+
+- name: Access changes
+  ansible.builtin.debug:
+    msg:
+      roles to create: "{{ pve_roles_missing | map(attribute='id') | list }}"
+      role privileges to set: "{{ pve_roles_differing | map(attribute='id') | list }}"
+      users to create: "{{ pve_users_missing | map(attribute='id') | list }}"
+      user comments to set: "{{ pve_users_differing | map(attribute='id') | list }}"
+  changed_when: true
+  when: (pve_roles_missing + pve_roles_differing + pve_users_missing + pve_users_differing) | length > 0
+  run_once: true
+
+- name: Create the missing roles
+  ansible.builtin.command:
+    argv: [pvesh, create, /access/roles, --roleid, "{{ item.id }}", --privs, "{{ item.privs | join(',') }}"]
+  changed_when: true
+  loop: "{{ pve_roles_missing }}"
+  loop_control:
+    label: "{{ item.id }}"
+  when: not ansible_check_mode
+  run_once: true
+
+- name: Set the role privileges
+  ansible.builtin.command:
+    argv: [pvesh, set, "/access/roles/{{ item.id }}", --privs, "{{ item.privs | join(',') }}"]
+  changed_when: true
+  loop: "{{ pve_roles_differing }}"
+  loop_control:
+    label: "{{ item.id }}"
+  when: not ansible_check_mode
+  run_once: true
+
+- name: Create the missing users
+  ansible.builtin.command:
+    argv: [pvesh, create, /access/users, --userid, "{{ item.id }}", --comment, "{{ item.comment }}"]
+  changed_when: true
+  loop: "{{ pve_users_missing }}"
+  loop_control:
+    label: "{{ item.id }}"
+  when: not ansible_check_mode
+  run_once: true
+
+- name: Set the user comments
+  ansible.builtin.command:
+    argv: [pvesh, set, "/access/users/{{ item.id }}", --comment, "{{ item.comment }}"]
+  changed_when: true
+  loop: "{{ pve_users_differing }}"
+  loop_control:
+    label: "{{ item.id }}"
+  when: not ansible_check_mode
+  run_once: true
+
+- name: Tokens to create
+  ansible.builtin.debug:
+    msg: "{{ pve_tokens_missing | map(attribute='id') | list }}"
+  changed_when: true
+  when: pve_tokens_missing | length > 0
+  run_once: true
+
+- name: Create the missing tokens
+  ansible.builtin.command:
+    argv: >-
+      {{ ['pvesh', 'create', '/access/users/' ~ item.id.split('!')[0] ~ '/token/' ~ item.id.split('!')[1],
+          '--privsep', item.privsep | default(1) | string, '--output-format', 'json']
+         + (['--comment', item.comment] if item.comment is defined else []) }}
+  register: pve_token_created
+  changed_when: true
+  loop: "{{ pve_tokens_missing }}"
+  loop_control:
+    label: "{{ item.id }}"
+  # The output holds the new secret (shown once by Proxmox).
+  no_log: true
+  when: not ansible_check_mode
+  run_once: true
+
+- name: Write the new token secrets (local)
+  ansible.builtin.lineinfile:
+    path: "{{ item.item.secret_file | default(playbook_dir ~ '/../build/pve-tokens/' ~ item.item.id) }}"
+    regexp: '^proxmox_api_token\s*='
+    line: 'proxmox_api_token = "{{ item.item.id }}={{ (item.stdout | from_json).value }}"'
+    create: true
+    mode: "0600"
+  loop: "{{ pve_token_created.results | default([]) | selectattr('stdout', 'defined') }}"
+  loop_control:
+    label: "{{ item.item.id }}"
+  delegate_to: localhost
+  become: false
+  no_log: true
+  run_once: true
+
+- name: ACL to add
+  ansible.builtin.debug:
+    msg: "{{ pve_acls_missing }}"
+  changed_when: true
+  when: pve_acls_missing | length > 0
+  run_once: true
+
+- name: Add the missing ACL
+  ansible.builtin.command:
+    argv:
+      - pvesh
+      - set
+      - /access/acl
+      - --path
+      - "{{ item.path }}"
+      - --roles
+      - "{{ item.role }}"
+      - "{{ ('!' in item.ugid) | ternary('--tokens', '--users') }}"
+      - "{{ item.ugid }}"
+  changed_when: true
+  loop: "{{ pve_acls_missing }}"
+  loop_control:
+    label: "{{ item.ugid }} {{ item.role }} {{ item.path }}"
+  when: not ansible_check_mode
+  run_once: true

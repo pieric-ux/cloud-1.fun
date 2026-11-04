@@ -28,7 +28,7 @@ endef
 	network network-check network-apply pfsense-backup \
 	bootstrap iso media-test serve-iso install pve-config-check pbs-config-check \
 	templates-check templates \
-	vms-init vms-plan \
+	vms-tfvars vms-init vms-plan \
 	config-check config
 
 help: ## List the targets
@@ -104,6 +104,15 @@ templates: ## Build the VM templates (CONFIRM=yes, needs 15-templates/templates.
 		-var-file=templates.pkrvars.hcl $(if $(ONLY),-only='$(ONLY)') .
 
 # --- 20 proxmox: guests with Terraform (read-only for now) ------------------
+
+# Token created by pve_config (access.yml); only its secret is in the vault.
+TF_TOKEN_ID := terraform@pve!iac
+
+vms-tfvars: ## Write 20-proxmox/terraform.tfvars from the vault (token secret, never displayed)
+	cd $(ANSIBLE_DIR) && ansible localhost -m ansible.builtin.copy -e ansible_become=false \
+		-e @inventory/group_vars/pve/vault.yml \
+		-a 'dest=../20-proxmox/terraform.tfvars mode=0600 content="proxmox_api_token = \"$(TF_TOKEN_ID)={{ vault_pve_terraform_token }}\"\n"' \
+		| sed -E 's/[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}/<hidden>/g'
 
 vms-init: ## Download the Terraform provider (local)
 	$(TERRAFORM) init

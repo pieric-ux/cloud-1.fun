@@ -17,6 +17,7 @@ imported).
 | `datacenter.yml` | datacenter options (`datacenter.cfg`: keyboard, CRS, HA shutdown policy, migration network), only the differing keys set through `pvesh` |
 | `storage.yml` | cluster-wide storages (Synology iSCSI / LVM / NFS, `pbs-store1`, `pbs-offsite`) created through `pvesh` when missing; vault secrets compared by checksum with `/etc/pve/priv/storage/` |
 | `backup.yml` | backup jobs (`jobs.cfg`, daily vzdump to `pbs-store1`, PBS VM excluded) created when missing |
+| `access.yml` | API access: roles (`PackerRole`, `TerraformProv`), users, tokens (privilege-separated unless `privsep: 0`) and ACL created when missing, role privileges / user comments kept in line; a new token secret goes to its `secret_file` (`20-proxmox/terraform.tfvars` for Terraform) or `build/pve-tokens/`, never displayed |
 | `cluster.yml` | read-only cluster state + the **manual** re-join procedure (not automated yet: a wrong join breaks the cluster) |
 
 Real run refused unless `pve_config_confirm=true`; the play runs one node at
@@ -42,5 +43,6 @@ datastore).
 
 ## Not covered yet
 
-HA resources and rules, qdevice setup, users / tokens / ACL (`monitoring@pve`,
-`packer@pve`, the future `terraform@pve`).
+HA resources and rules, qdevice setup, user expiry (none set, not compared).
+Token secrets are not kept: after a rebuild the
+clients (pve-exporter, Packer, Terraform) get the new ones.

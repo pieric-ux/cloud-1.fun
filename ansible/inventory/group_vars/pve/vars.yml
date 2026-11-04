@@ -89,6 +89,54 @@ pve_backup_jobs:
       # Proxmox placeholder, not Jinja (kept verbatim by !unsafe).
       notes-template: !unsafe "{{guestname}}"  # noqa: jinja[spacing]
 
+# API access (access.yml): roles, users and ACL created when missing (role
+# privileges and user comments kept in line), tokens created when missing.
+pve_roles:
+  - id: PackerRole
+    privs: [Datastore.AllocateSpace, Datastore.AllocateTemplate, Datastore.Audit,
+            SDN.Use, Sys.Audit, Sys.Modify, VM.Allocate, VM.Audit, VM.Clone,
+            VM.Config.CDROM, VM.Config.CPU, VM.Config.Cloudinit, VM.Config.Disk,
+            VM.Config.HWType, VM.Config.Memory, VM.Config.Network,
+            VM.Config.Options, VM.Console, VM.GuestAgent.Audit, VM.PowerMgmt]
+  # Layer 20 (bpg/proxmox): the provider's list adapted to PVE 9 (VM.Monitor
+  # replaced by VM.GuestAgent.Audit), plus migration and HA (Sys.Console).
+  - id: TerraformProv
+    privs: [Datastore.Allocate, Datastore.AllocateSpace, Datastore.AllocateTemplate,
+            Datastore.Audit, Mapping.Audit, Mapping.Use, Pool.Allocate, Pool.Audit,
+            SDN.Use, Sys.Audit, Sys.Console, Sys.Modify, VM.Allocate, VM.Audit,
+            VM.Clone, VM.Config.CDROM, VM.Config.CPU, VM.Config.Cloudinit,
+            VM.Config.Disk, VM.Config.HWType, VM.Config.Memory, VM.Config.Network,
+            VM.Config.Options, VM.Console, VM.GuestAgent.Audit, VM.Migrate,
+            VM.PowerMgmt]
+
+pve_users:
+  - id: monitoring@pve
+    comment: Prometheus pve-exporter (read-only)
+  - id: packer@pve
+    comment: Packer build user
+  - id: terraform@pve
+    comment: Terraform, layer 20
+
+# API tokens, privilege-separated by default (rights from their own ACL);
+# `privsep: 0` inherits the rights of the user. A token created here gets a
+# new secret, written to `secret_file` (local, gitignored) if set, otherwise
+# to build/pve-tokens/<token id> for the client to be updated.
+pve_tokens:
+  - id: monitoring@pve!exporter
+  # Used by Packer (15-templates), no expiry.
+  - id: packer@pve!pieric
+    privsep: 0
+  - id: terraform@pve!iac
+    comment: Terraform, layer 20
+    secret_file: "{{ playbook_dir }}/../20-proxmox/terraform.tfvars"
+
+pve_acls:
+  - {path: /, role: PVEAuditor, ugid: monitoring@pve}
+  - {path: /, role: PVEAuditor, ugid: monitoring@pve!exporter}
+  - {path: /, role: PackerRole, ugid: packer@pve}
+  - {path: /, role: TerraformProv, ugid: terraform@pve}
+  - {path: /, role: TerraformProv, ugid: terraform@pve!iac}
+
 # Cluster (manual for now, see roles/pve_config/tasks/cluster.yml).
 pve_cluster_name: INFRA-CLUSTER
 pve_qdevice: 10.1.240.13

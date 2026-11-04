@@ -1,5 +1,5 @@
-# Copy to terraform.tfvars (gitignored) and fill in.
-# Token to create on Proxmox (Datacenter > Permissions > API Tokens), e.g.
-# user terraform@pve, token "iac", role restricted to what the layer needs.
+# terraform.tfvars (gitignored) is written by `make vms-tfvars` from the vault
+# (token terraform@pve!iac, created by the pve_config role). By hand: copy
+# this file and fill in.
 proxmox_endpoint  = "https://10.1.240.11:8006/"
 proxmox_api_token = "terraform@pve!iac=00000000-0000-0000-0000-000000000000"
