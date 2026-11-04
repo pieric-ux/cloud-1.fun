@@ -1,0 +1,148 @@
+---
+# Creation of the missing iSCSI objects (LUN, target, mapping, masking).
+# Never deletes, resizes or renames: an existing LUN or target is left as is,
+# only a differing masking is set again. The share stays manual (DSM wants
+# its settings encrypted by the browser). Parameters are JSON-encoded, as the
+# web UI sends them (entry.cgi decodes every value as JSON).
+- name: Targets whose masking differs
+  ansible.builtin.set_fact:
+    storage_targets_masking_differs: >-
+      {{ storage_targets_masking_differs | default([])
+         + ([item] if (storage_target.acls | selectattr('permission', '==', 'rw') | map(attribute='iqn') | sort) != (item.initiators | sort)
+                      or (storage_target.acls | selectattr('iqn', '==', storage_iscsi_default_acl) | map(attribute='permission') | list) != ['-']
+            else []) }}
+  vars:
+    storage_target: "{{ storage_live.targets.targets | selectattr('iqn', '==', item.iqn) | first | default({'acls': []}) }}"
+  loop: "{{ storage_iscsi_targets }}"
+  loop_control:
+    label: "{{ item.iqn }}"
+
+- name: Missing iSCSI objects and masking to set
+  ansible.builtin.debug:
+    msg:
+      LUNs to create: "{{ storage_luns_missing | map(attribute='name') | list }}"
+      targets to create: "{{ storage_targets_missing | map(attribute='iqn') | list }}"
+      masking to set: "{{ storage_targets_masking_differs | map(attribute='iqn') | list }}"
+  changed_when: true
+  when: (storage_luns_missing + storage_targets_missing + storage_targets_masking_differs) | length > 0
+
+- name: Create the missing LUNs
+  ansible.builtin.uri:
+    url: "{{ dsm_url }}/webapi/entry.cgi"
+    method: POST
+    body_format: form-urlencoded
+    body: "{{ storage_api | combine(storage_params) }}"
+    validate_certs: "{{ dsm_validate_certs }}"
+    return_content: true
+  vars:
+    storage_api: {api: SYNO.Core.ISCSI.LUN, version: 1, method: create, _sid: "{{ storage_sid }}"}
+    storage_params: "{{ storage_json_params }}"
+    storage_raw_params:
+      name: "{{ item.name }}"
+      location: "{{ item.location }}"
+      size: "{{ (item.size_gib * 1024**3) | int }}"
+      # Thin LUN on a Btrfs volume, like lun-prox.
+      type: BLUN
+      dev_attribs: "{{ storage_lun_dev_attribs }}"
+  loop: "{{ storage_luns_missing }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: storage_lun_created
+  changed_when: true
+  failed_when: not (storage_lun_created.content | from_json).success
+  when: not ansible_check_mode
+
+- name: Create the missing targets
+  ansible.builtin.uri:
+    url: "{{ dsm_url }}/webapi/entry.cgi"
+    method: POST
+    body_format: form-urlencoded
+    body: "{{ storage_api | combine(storage_params) }}"
+    validate_certs: "{{ dsm_validate_certs }}"
+    return_content: true
+  vars:
+    storage_api: {api: SYNO.Core.ISCSI.Target, version: 1, method: create, _sid: "{{ storage_sid }}"}
+    storage_params: "{{ storage_json_params }}"
+    storage_raw_params:
+      name: "{{ item.name }}"
+      iqn: "{{ item.iqn }}"
+      # One-way CHAP.
+      auth_type: 1
+      user: "{{ item.chap_user }}"
+      password: "{{ item.chap_password }}"
+      # Several sessions per initiator: one per multipath path.
+      max_sessions: 0
+  loop: "{{ storage_targets_missing }}"
+  loop_control:
+    label: "{{ item.iqn }}"
+  register: storage_target_created
+  changed_when: true
+  failed_when: not (storage_target_created.content | from_json).success
+  # CHAP secret in the request.
+  no_log: true
+  when: not ansible_check_mode
+
+- name: Read the new objects
+  ansible.builtin.include_tasks:
+    file: read.yml
+    apply: {tags: [always]}
+  when: not ansible_check_mode and (storage_luns_missing + storage_targets_missing) | length > 0
+
+- name: Map the LUNs to their targets
+  ansible.builtin.uri:
+    url: "{{ dsm_url }}/webapi/entry.cgi"
+    method: POST
+    body_format: form-urlencoded
+    body: "{{ storage_api | combine(storage_params) }}"
+    validate_certs: "{{ dsm_validate_certs }}"
+    return_content: true
+  vars:
+    storage_api: {api: SYNO.Core.ISCSI.Target, version: 1, method: map_lun, _sid: "{{ storage_sid }}"}
+    storage_params: "{{ storage_json_params }}"
+    storage_target: "{{ storage_live.targets.targets | selectattr('iqn', '==', item.iqn) | first }}"
+    storage_raw_params:
+      target_id: "{{ storage_target.target_id | string }}"
+      lun_uuids: "{{ storage_unmapped_uuids }}"
+    storage_unmapped_uuids: >-
+      {{ storage_live.luns.luns | selectattr('name', 'in', item.luns) | map(attribute='uuid')
+         | difference(storage_target.mapped_luns | map(attribute='lun_uuid')) | list }}
+  loop: "{{ storage_iscsi_targets }}"
+  loop_control:
+    label: "{{ item.iqn }}"
+  register: storage_mapped
+  changed_when: true
+  failed_when: not (storage_mapped.content | from_json).success
+  when:
+    - not ansible_check_mode
+    - storage_unmapped_uuids | length > 0
+
+- name: Set the masking (only the recorded initiators, any other denied)
+  ansible.builtin.uri:
+    url: "{{ dsm_url }}/webapi/entry.cgi"
+    method: POST
+    body_format: form-urlencoded
+    body: "{{ storage_api | combine(storage_params) }}"
+    validate_certs: "{{ dsm_validate_certs }}"
+    return_content: true
+  vars:
+    storage_api: {api: SYNO.Core.ISCSI.Target, version: 1, method: acl_masks_set, _sid: "{{ storage_sid }}"}
+    storage_params: "{{ storage_json_params }}"
+    storage_raw_params:
+      target_id: "{{ (storage_live.targets.targets | selectattr('iqn', '==', item.iqn) | first).target_id }}"
+      acls: >-
+        {{ dict(item.initiators | zip(item.initiators | map('regex_replace', '.+', 'rw')))
+           | dict2items(key_name='iqn', value_name='permission')
+           + [{'iqn': storage_iscsi_default_acl, 'permission': '-'}] }}
+  loop: "{{ storage_targets_masking_differs }}"
+  loop_control:
+    label: "{{ item.iqn }}"
+  register: storage_masked
+  changed_when: true
+  failed_when: not (storage_masked.content | from_json).success
+  when: not ansible_check_mode
+
+- name: Read the result
+  ansible.builtin.include_tasks:
+    file: read.yml
+    apply: {tags: [always]}
+  when: not ansible_check_mode

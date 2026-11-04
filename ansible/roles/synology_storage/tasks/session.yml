@@ -1,0 +1,25 @@
+---
+- name: Login to DSM
+  ansible.builtin.uri:
+    url: "{{ dsm_url }}/webapi/auth.cgi"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      api: SYNO.API.Auth
+      version: 6
+      method: login
+      account: "{{ dsm_user }}"
+      passwd: "{{ dsm_password }}"
+      session: Core
+      format: sid
+    validate_certs: "{{ dsm_validate_certs }}"
+    return_content: true
+  register: storage_login
+  check_mode: false
+  no_log: true
+
+- name: Login accepted
+  ansible.builtin.assert:
+    that: (storage_login.content | from_json).success
+    fail_msg: "DSM login refused (error {{ (storage_login.content | from_json).error | default('') }})"
+    quiet: true

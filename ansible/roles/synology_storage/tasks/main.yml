@@ -1,161 +1,23 @@
 ---
-# Read-only audit of the NAS against the code, through the DSM web API (the
-# API of the web UI, undocumented for iSCSI). Every check runs, the verdict at
-# the end lists all the drifts. The CHAP secret returned by the API is only
-# compared, never displayed.
+# Storage of the cluster on the NAS, through the DSM web API: audit (always)
+# and, with storage_apply, creation of the missing iSCSI objects first.
 - name: DSM session
   block:
-    - name: Login to DSM
-      ansible.builtin.uri:
-        url: "{{ dsm_url }}/webapi/auth.cgi"
-        method: POST
-        body_format: form-urlencoded
-        body:
-          api: SYNO.API.Auth
-          version: 6
-          method: login
-          account: "{{ dsm_user }}"
-          passwd: "{{ dsm_password }}"
-          session: Core
-          format: sid
-        validate_certs: "{{ dsm_validate_certs }}"
-        return_content: true
-      register: storage_login
-      no_log: true
+    - name: Login
+      ansible.builtin.import_tasks: session.yml
 
-    - name: Login accepted
-      ansible.builtin.assert:
-        that: (storage_login.content | from_json).success
-        fail_msg: "DSM login refused (error {{ (storage_login.content | from_json).error | default('') }})"
-        quiet: true
+    - name: Read the live configuration
+      ansible.builtin.import_tasks: read.yml
 
-    - name: Read the storage configuration
-      ansible.builtin.uri:
-        url: "{{ dsm_url }}/webapi/entry.cgi"
-        method: POST
-        body_format: form-urlencoded
-        body: "{{ item.body | combine({'_sid': storage_sid}) }}"
-        validate_certs: "{{ dsm_validate_certs }}"
-        return_content: true
-      loop:
-        - {name: luns, body: {api: SYNO.Core.ISCSI.LUN, version: 1, method: list, additional: '["is_mapped"]'}}
-        - {name: targets, body: {api: SYNO.Core.ISCSI.Target, version: 1, method: list, additional: '["mapped_lun","acls"]'}}
-        - {name: shares, body: {api: SYNO.Core.Share, version: 1, method: list, additional: '["vol_path"]'}}
-        - {name: nfs, body: {api: SYNO.Core.FileServ.NFS, version: 2, method: get}}
-      loop_control:
-        label: "{{ item.name }}"
-      register: storage_reads
-      # The target listing holds the CHAP secret in clear.
-      no_log: true
+    - name: Create the missing iSCSI objects
+      ansible.builtin.include_tasks:
+        file: create.yml
+        apply: {tags: [always]}
+      when: storage_apply | bool
 
-    - name: Read the NFS rules of the shares
-      ansible.builtin.uri:
-        url: "{{ dsm_url }}/webapi/entry.cgi"
-        method: POST
-        body_format: form-urlencoded
-        body: {api: SYNO.Core.FileServ.NFS.SharePrivilege, version: 1, method: load, share_name: "{{ item.name }}", _sid: "{{ storage_sid }}"}
-        validate_certs: "{{ dsm_validate_certs }}"
-        return_content: true
-      loop: "{{ storage_nfs_shares }}"
-      loop_control:
-        label: "{{ item.name }}"
-      register: storage_nfs_reads
-
-    - name: Check the LUNs
-      ansible.builtin.set_fact:
-        storage_checks: >-
-          {{ storage_checks | default([]) + [
-               {'what': 'LUN ' ~ item.name ~ ' exists', 'ok': lun != {}},
-               {'what': 'LUN ' ~ item.name ~ ' on ' ~ item.location, 'ok': lun.location | default('') == item.location},
-               {'what': 'LUN ' ~ item.name ~ ' size ' ~ item.size_gib ~ ' GiB', 'ok': lun.size | default(0) == item.size_gib * 1024 ** 3},
-               {'what': 'LUN ' ~ item.name ~ ' recorded uuid', 'ok': lun.uuid | default('') == item.uuid},
-               {'what': 'LUN ' ~ item.name ~ ' mapped to a target', 'ok': lun.is_mapped | default(false)}] }}
-      vars:
-        lun: "{{ storage_live.luns.luns | selectattr('name', '==', item.name) | first | default({}) }}"
-      loop: "{{ storage_luns }}"
-      loop_control:
-        label: "{{ item.name }}"
-
-    - name: Check the iSCSI targets
-      ansible.builtin.set_fact:
-        storage_checks: >-
-          {{ storage_checks | default([]) + [
-               {'what': 'target ' ~ item.iqn ~ ' exists', 'ok': target != {}},
-               {'what': 'target ' ~ item.iqn ~ ' enabled', 'ok': target.is_enabled | default(false)},
-               {'what': 'target ' ~ item.iqn ~ ' CHAP (one-way) user ' ~ item.chap_user,
-                'ok': target.auth_type | default(0) == 1 and target.user | default('') == item.chap_user},
-               {'what': 'target ' ~ item.iqn ~ ' maps ' ~ item.luns | join(','),
-                'ok': lun_uuids | difference(target.mapped_luns | default([]) | map(attribute='lun_uuid')) | length == 0},
-               {'what': 'target ' ~ item.iqn ~ ' masking: only ' ~ item.initiators | join(', ') ~ ' (rw)',
-                'ok': (target.acls | default([]) | selectattr('permission', '==', 'rw') | map(attribute='iqn') | sort)
-                      == (item.initiators | sort)},
-               {'what': 'target ' ~ item.iqn ~ ' masking: any other initiator denied',
-                'ok': target.acls | default([]) | selectattr('iqn', 'search', ':default.acl$')
-                      | map(attribute='permission') | list == ['-']}] }}
-      vars:
-        target: "{{ storage_live.targets.targets | selectattr('iqn', '==', item.iqn) | first | default({}) }}"
-        lun_uuids: "{{ storage_luns | selectattr('name', 'in', item.luns) | map(attribute='uuid') | list }}"
-      loop: "{{ storage_iscsi_targets }}"
-      loop_control:
-        label: "{{ item.iqn }}"
-
-    - name: Check the CHAP secrets against the vault (result only)
-      ansible.builtin.set_fact:
-        storage_checks: >-
-          {{ storage_checks + [{'what': 'target ' ~ item.iqn ~ ' CHAP secret matches the vault',
-                                'ok': (storage_live.targets.targets | selectattr('iqn', '==', item.iqn)
-                                       | map(attribute='password') | first | default('')) == item.chap_password}] }}
-      loop: "{{ storage_iscsi_targets }}"
-      loop_control:
-        label: "{{ item.iqn }}"
-      no_log: true
-
-    - name: Check the NFS shares
-      ansible.builtin.set_fact:
-        storage_checks: >-
-          {{ storage_checks + [
-               {'what': 'share ' ~ item.name ~ ' exists on ' ~ item.volume,
-                'ok': storage_live.shares.shares | selectattr('name', '==', item.name)
-                      | map(attribute='vol_path') | list == [item.volume]}] }}
-      loop: "{{ storage_nfs_shares }}"
-      loop_control:
-        label: "{{ item.name }}"
-
-    - name: Check the NFS rules of the shares
-      ansible.builtin.set_fact:
-        storage_checks: >-
-          {{ storage_checks + [
-               {'what': 'share ' ~ item.0.name ~ ' NFS rule ' ~ rule,
-                'ok': rule in (live | map(attribute='client')
-                               | zip(live | map(attribute='privilege'), live | map(attribute='root_squash'))
-                               | map('join', ' ') | list)}] }}
-      vars:
-        rule: "{{ [item.1.client, item.1.privilege, item.1.root_squash] | join(' ') }}"
-        live: "{{ storage_nfs_live[item.0.name] }}"
-      loop: "{{ storage_nfs_shares | subelements('rules') }}"
-      loop_control:
-        label: "{{ item.0.name }} {{ item.1.client }}"
-
-    - name: Check the NFS service
-      ansible.builtin.set_fact:
-        storage_checks: "{{ storage_checks + [{'what': 'NFS service enabled', 'ok': storage_live.nfs.enable_nfs | default(false)}] }}"
-
-    - name: Storage checks
-      ansible.builtin.debug:
-        msg: "{{ storage_checks | map(attribute='what') | zip(storage_checks | map(attribute='ok') | map('ternary', 'ok', 'DRIFT')) | map('join', ': ') | list }}"
-
-    - name: Verdict
-      ansible.builtin.assert:
-        that: storage_checks | rejectattr('ok') | list | length == 0
-        fail_msg: "NAS differs from the code: {{ storage_checks | rejectattr('ok') | map(attribute='what') | list }}"
-        success_msg: "NAS matches the code ({{ storage_checks | length }} checks)"
-      when: storage_audit_fail_on_drift | bool
+    - name: Audit against the code
+      ansible.builtin.import_tasks: audit.yml
 
   always:
-    - name: Logout from DSM
-      ansible.builtin.uri:
-        url: "{{ dsm_url }}/webapi/auth.cgi?api=SYNO.API.Auth&version=6&method=logout&session=Core&_sid={{ storage_sid }}"
-        validate_certs: "{{ dsm_validate_certs }}"
-      when: storage_login.content is defined
-      failed_when: false
-      no_log: true
+    - name: Logout
+      ansible.builtin.import_tasks: logout.yml

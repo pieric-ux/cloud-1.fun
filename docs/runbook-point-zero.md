@@ -248,21 +248,22 @@ make network-apply CONFIRM=yes
 
 ### 8.2 Stockage (NAS)
 
-Création encore manuelle dans DSM (étape 4), avec les valeurs du code
-(`group_vars/storage/vars.yml`) : LUN `lun-prox` 1000 Gio thin sur
-`/volume1`, cible `iqn.2026-10.lab.infra:prox` en CHAP unidirectionnel
-(utilisateur et secret : `group_vars/pve`), masking = les deux IQN des
-`host_vars/pveXX.yml` en lecture-écriture et tout autre initiateur refusé,
-partage `iso` en NFS `10.1.20.0/24` rw, root squash vers admin. Puis :
+Le partage NFS reste manuel dans DSM (étape 4) : partage `iso` sur
+`/volume1`, règle NFS `10.1.20.0/24` en lecture-écriture, root squash vers
+admin. L'iSCSI vient du code (LUN `lun-prox` 1000 Gio thin, cible
+`iqn.2026-10.lab.infra:prox` en CHAP, masking = les IQN des
+`host_vars/pveXX.yml`, sessions multiples pour le multipath) :
 ```bash
-make storage-check     # audit lecture seule, doit finir sur "NAS matches the code"
+make storage-apply-check            # ce qui serait créé
+make storage-apply CONFIRM=yes      # crée ce qui manque, puis audit
+make storage-check                  # doit finir sur "NAS matches the code"
 ```
 Une LUN recréée a un **nouvel uuid et un nouveau WWID** : reporter l'uuid
-(DSM > SAN Manager, ou `make storage-check` qui le signale en écart) dans
-`storage_luns`, et le WWID
-lu sur un nœud (`multipath -ll` ou `/lib/udev/scsi_id -g -d /dev/sdb`) dans
-`pve_iscsi_lun_wwid` : il ne se déduit pas de l'uuid. Sinon multipath et
-`synology-lvm` ne retrouvent pas la LUN.
+(signalé en écart par l'audit, ou DSM > SAN Manager) dans `storage_luns`, et
+le WWID lu sur un nœud (`multipath -ll` ou `/lib/udev/scsi_id -g -d
+/dev/sdb`) dans `pve_iscsi_lun_wwid` : il ne se déduit pas de l'uuid. Sinon
+multipath et `synology-lvm` ne retrouvent pas la LUN. Une LUN neuve est
+vide : les VMs reviennent par la restauration (8.7).
 
 ### 8.3 Proxmox sur les deux nœuds
 

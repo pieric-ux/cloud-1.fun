@@ -1,0 +1,36 @@
+---
+# Live configuration: read at the start, and again after a creation (new
+# uuids and target ids).
+- name: Read the storage configuration
+  ansible.builtin.uri:
+    url: "{{ dsm_url }}/webapi/entry.cgi"
+    method: POST
+    body_format: form-urlencoded
+    body: "{{ item.body | combine({'_sid': storage_sid}) }}"
+    validate_certs: "{{ dsm_validate_certs }}"
+    return_content: true
+  loop:
+    - {name: luns, body: {api: SYNO.Core.ISCSI.LUN, version: 1, method: list, additional: '["is_mapped"]'}}
+    - {name: targets, body: {api: SYNO.Core.ISCSI.Target, version: 1, method: list, additional: '["mapped_lun","acls"]'}}
+    - {name: shares, body: {api: SYNO.Core.Share, version: 1, method: list, additional: '["vol_path"]'}}
+    - {name: nfs, body: {api: SYNO.Core.FileServ.NFS, version: 2, method: get}}
+  loop_control:
+    label: "{{ item.name }}"
+  register: storage_reads
+  check_mode: false
+  # The target listing holds the CHAP secret in clear.
+  no_log: true
+
+- name: Read the NFS rules of the shares
+  ansible.builtin.uri:
+    url: "{{ dsm_url }}/webapi/entry.cgi"
+    method: POST
+    body_format: form-urlencoded
+    body: {api: SYNO.Core.FileServ.NFS.SharePrivilege, version: 1, method: load, share_name: "{{ item.name }}", _sid: "{{ storage_sid }}"}
+    validate_certs: "{{ dsm_validate_certs }}"
+    return_content: true
+  loop: "{{ storage_nfs_shares }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: storage_nfs_reads
+  check_mode: false

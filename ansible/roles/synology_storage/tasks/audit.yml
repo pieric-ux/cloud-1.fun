@@ -1,0 +1,97 @@
+---
+# Every check runs, the verdict lists all the drifts at once.
+- name: Reset the checks
+  ansible.builtin.set_fact:
+    storage_checks: []
+
+- name: Check the LUNs
+  ansible.builtin.set_fact:
+    storage_checks: >-
+      {{ storage_checks + [
+           {'what': 'LUN ' ~ item.name ~ ' exists', 'ok': lun != {}},
+           {'what': 'LUN ' ~ item.name ~ ' on ' ~ item.location, 'ok': lun.location | default('') == item.location},
+           {'what': 'LUN ' ~ item.name ~ ' size ' ~ item.size_gib ~ ' GiB', 'ok': lun.size | default(0) == item.size_gib * 1024**3},
+           {'what': 'LUN ' ~ item.name ~ ' recorded uuid', 'ok': lun.uuid | default('') == item.uuid},
+           {'what': 'LUN ' ~ item.name ~ ' mapped to a target', 'ok': lun.is_mapped | default(false)}] }}
+  vars:
+    lun: "{{ storage_live.luns.luns | selectattr('name', '==', item.name) | first | default({}) }}"
+  loop: "{{ storage_luns }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Check the iSCSI targets
+  ansible.builtin.set_fact:
+    storage_checks: >-
+      {{ storage_checks + [
+           {'what': 'target ' ~ item.iqn ~ ' exists', 'ok': target != {}},
+           {'what': 'target ' ~ item.iqn ~ ' enabled', 'ok': target.is_enabled | default(false)},
+           {'what': 'target ' ~ item.iqn ~ ' CHAP (one-way) user ' ~ item.chap_user,
+            'ok': target.auth_type | default(0) == 1 and target.user | default('') == item.chap_user},
+           {'what': 'target ' ~ item.iqn ~ ' accepts several sessions per initiator (multipath)',
+            'ok': target.max_sessions | default(-1) == 0},
+           {'what': 'target ' ~ item.iqn ~ ' maps ' ~ item.luns | join(','),
+            'ok': lun_uuids | difference(target.mapped_luns | default([]) | map(attribute='lun_uuid')) | length == 0},
+           {'what': 'target ' ~ item.iqn ~ ' masking: only ' ~ item.initiators | join(', ') ~ ' (rw)',
+            'ok': (target.acls | default([]) | selectattr('permission', '==', 'rw') | map(attribute='iqn') | sort)
+                  == (item.initiators | sort)},
+           {'what': 'target ' ~ item.iqn ~ ' masking: any other initiator denied',
+            'ok': target.acls | default([]) | selectattr('iqn', 'search', ':default.acl$')
+                  | map(attribute='permission') | list == ['-']}] }}
+  vars:
+    target: "{{ storage_live.targets.targets | selectattr('iqn', '==', item.iqn) | first | default({}) }}"
+    lun_uuids: "{{ storage_luns | selectattr('name', 'in', item.luns) | map(attribute='uuid') | list }}"
+  loop: "{{ storage_iscsi_targets }}"
+  loop_control:
+    label: "{{ item.iqn }}"
+
+- name: Check the CHAP secrets against the vault (result only)
+  ansible.builtin.set_fact:
+    storage_checks: >-
+      {{ storage_checks + [{'what': 'target ' ~ item.iqn ~ ' CHAP secret matches the vault',
+                            'ok': (storage_live.targets.targets | selectattr('iqn', '==', item.iqn)
+                                   | map(attribute='password') | first | default('')) == item.chap_password}] }}
+  loop: "{{ storage_iscsi_targets }}"
+  loop_control:
+    label: "{{ item.iqn }}"
+  no_log: true
+
+- name: Check the NFS shares
+  ansible.builtin.set_fact:
+    storage_checks: >-
+      {{ storage_checks + [
+           {'what': 'share ' ~ item.name ~ ' exists on ' ~ item.volume,
+            'ok': storage_live.shares.shares | selectattr('name', '==', item.name)
+                  | map(attribute='vol_path') | list == [item.volume]}] }}
+  loop: "{{ storage_nfs_shares }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Check the NFS rules of the shares
+  ansible.builtin.set_fact:
+    storage_checks: >-
+      {{ storage_checks + [
+           {'what': 'share ' ~ item.0.name ~ ' NFS rule ' ~ rule,
+            'ok': rule in (live | map(attribute='client')
+                           | zip(live | map(attribute='privilege'), live | map(attribute='root_squash'))
+                           | map('join', ' ') | list)}] }}
+  vars:
+    rule: "{{ [item.1.client, item.1.privilege, item.1.root_squash] | join(' ') }}"
+    live: "{{ storage_nfs_live[item.0.name] }}"
+  loop: "{{ storage_nfs_shares | subelements('rules') }}"
+  loop_control:
+    label: "{{ item.0.name }} {{ item.1.client }}"
+
+- name: Check the NFS service
+  ansible.builtin.set_fact:
+    storage_checks: "{{ storage_checks + [{'what': 'NFS service enabled', 'ok': storage_live.nfs.enable_nfs | default(false)}] }}"
+
+- name: Storage checks
+  ansible.builtin.debug:
+    msg: "{{ storage_checks | map(attribute='what') | zip(storage_checks | map(attribute='ok') | map('ternary', 'ok', 'DRIFT')) | map('join', ': ') | list }}"
+
+- name: Verdict
+  ansible.builtin.assert:
+    that: storage_checks | rejectattr('ok') | list | length == 0
+    fail_msg: "NAS differs from the code: {{ storage_checks | rejectattr('ok') | map(attribute='what') | list }}"
+    success_msg: "NAS matches the code ({{ storage_checks | length }} checks)"
+  when: storage_audit_fail_on_drift | bool

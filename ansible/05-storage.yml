@@ -1,8 +1,12 @@
 ---
 # Layer 05 - storage on the Synology NAS (role synology_storage).
-#   default   read-only audit through the DSM web API: LUN, iSCSI target
-#             (CHAP, masking by the IQNs of host_vars/pveXX.yml), NFS shares;
-#             fails on any drift. Creation is not automated yet (runbook 8.2).
+#   default               read-only audit through the DSM web API: LUN, iSCSI
+#                         target (CHAP, masking by the IQNs of host_vars/pveXX.yml),
+#                         NFS shares; fails on any drift.
+#   --tags storage-apply  create the missing iSCSI objects (LUN, target,
+#                         mapping, masking), then audit; preview with
+#                         --check --diff, needs -e storage_apply_confirm=true.
+#                         Never deletes or resizes; the NFS share stays manual.
 
 - name: Audit the NAS storage
   hosts: storage
@@ -10,5 +14,24 @@
 
   tasks:
     - name: Storage audit
+      ansible.builtin.import_role:
+        name: synology_storage
+
+- name: Create the missing iSCSI objects on the NAS
+  hosts: storage
+  gather_facts: false
+  tags: [never, storage-apply]
+  vars:
+    storage_apply: true
+
+  tasks:
+    - name: Refuse a real run without explicit confirmation
+      ansible.builtin.assert:
+        that: ansible_check_mode or (storage_apply_confirm | default(false) | bool)
+        fail_msg: >-
+          Real change on the NAS: preview with --check --diff, then re-run with
+          -e storage_apply_confirm=true.
+
+    - name: Storage creation and audit
       ansible.builtin.import_role:
         name: synology_storage

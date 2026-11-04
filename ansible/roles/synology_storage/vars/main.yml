@@ -10,3 +10,11 @@ storage_nfs_live: >-
   {{ dict(storage_nfs_reads.results | map(attribute='item.name')
      | zip(storage_nfs_reads.results | map(attribute='content') | map('from_json')
            | map(attribute='data') | map(attribute='rule', default=[]))) }}
+
+# Creation (create.yml): missing objects, and parameters JSON-encoded as the
+# web UI sends them (from storage_raw_params, set per task).
+storage_luns_missing: >-
+  {{ storage_luns | rejectattr('name', 'in', storage_live.luns.luns | map(attribute='name') | list) | list }}
+storage_targets_missing: >-
+  {{ storage_iscsi_targets | rejectattr('iqn', 'in', storage_live.targets.targets | map(attribute='iqn') | list) | list }}
+storage_json_params: "{{ dict(storage_raw_params.keys() | zip(storage_raw_params.values() | map('to_json'))) }}"

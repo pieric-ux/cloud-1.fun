@@ -1,0 +1,9 @@
+---
+- name: Logout from DSM
+  ansible.builtin.uri:
+    url: "{{ dsm_url }}/webapi/auth.cgi?api=SYNO.API.Auth&version=6&method=logout&session=Core&_sid={{ storage_sid }}"
+    validate_certs: "{{ dsm_validate_certs }}"
+  when: storage_login.content is defined
+  failed_when: false
+  check_mode: false
+  no_log: true

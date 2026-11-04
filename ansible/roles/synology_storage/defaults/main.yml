@@ -1,3 +1,14 @@
 ---
-# Read-only audit: no variable switches it to writing (creation comes later).
+# Audit only by default; storage_apply (05-storage.yml --tags storage-apply)
+# creates the missing iSCSI objects, never deletes or resizes anything.
+storage_apply: false
 storage_audit_fail_on_drift: true
+# The entry DSM keeps in every target ACL for "any other initiator".
+storage_iscsi_default_acl: iqn.2000-01.com.synology:default.acl
+# LUN features, as on lun-prox (DSM defaults for a thin Btrfs LUN).
+storage_lun_dev_attribs:
+  - {dev_attrib: emulate_tpws, enable: 1}
+  - {dev_attrib: emulate_caw, enable: 1}
+  - {dev_attrib: emulate_3pc, enable: 1}
+  - {dev_attrib: emulate_tpu, enable: 0}
+  - {dev_attrib: can_snapshot, enable: 1}

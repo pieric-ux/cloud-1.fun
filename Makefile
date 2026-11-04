@@ -29,7 +29,7 @@ endef
 .PHONY: help preflight lint \
 	network network-check network-apply pfsense-backup \
 	bootstrap iso media-test serve-iso install pve-config-check pve-config pbs-config-check pbs-config \
-	storage-check templates-check templates \
+	storage-check storage-apply storage-apply-check templates-check templates \
 	vms-tfvars vms-init vms-plan vms-apply \
 	config-check config
 
@@ -104,6 +104,13 @@ pbs-config: ## Apply the Proxmox Backup Server configuration (CONFIRM=yes)
 
 storage-check: ## Audit the NAS (LUN, iSCSI target, masking, CHAP, NFS) against the code (read-only)
 	$(PLAYBOOK) 05-storage.yml
+
+storage-apply: ## Create the missing iSCSI objects on the NAS, then audit (CONFIRM=yes; preview: storage-apply-check)
+	$(call need_confirm,the NAS)
+	$(PLAYBOOK) 05-storage.yml --tags storage-apply -e storage_apply_confirm=true
+
+storage-apply-check: ## Preview the iSCSI objects that storage-apply would create (no change)
+	$(PLAYBOOK) 05-storage.yml --tags storage-apply --check --diff
 
 # --- 15 templates: Packer (local install: serves the answer files over HTTP
 # to the VM, on the address of this machine seen from VLAN 240) -------------
