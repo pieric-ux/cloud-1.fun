@@ -1,0 +1,16 @@
+# {{ ansible_managed }}
+# Generated from network/addressing.yml (role dnsmasq): edit that file.
+
+# Kept from /etc/hosts (no-hosts): dnsmasq answered it before.
+127.0.0.1	localhost
+
+# Machines
+{% for host in addressing.hosts if host.dns | default(true) %}
+{{ host.ip }}	{{ host.name }}.{{ addressing.domain }} {{ host.name }}{% for alias in host.aliases | default([]) %} {{ alias }}.{{ addressing.domain }} {{ alias }}{% endfor %}
+
+{% endfor %}
+
+# Services (via the reverse proxy)
+{% for service in addressing.services %}
+{{ addressing.reverse_proxy }}	{{ service }}.{{ addressing.domain }}
+{% endfor %}

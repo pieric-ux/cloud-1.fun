@@ -25,8 +25,8 @@ resource "proxmox_virtual_environment_container" "vault_01" {
     hostname   = "vault-01"
     ip_config {
       ipv4 {
-        address = "10.1.240.32/24"
-        gateway = "10.1.240.1"
+        address = "${local.host_ip["vault-01"]}/24"
+        gateway = local.mgmt_gw
       }
     }
   }

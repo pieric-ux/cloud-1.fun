@@ -1,0 +1,43 @@
+---
+- name: Read the addressing of the rack
+  ansible.builtin.include_vars:
+    file: "{{ dnsmasq_addressing_file }}"
+    name: addressing
+
+- name: DNS records (machines and services)
+  ansible.builtin.template:
+    src: dnsmasq.hosts.j2
+    dest: "{{ dnsmasq_hosts_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload dnsmasq
+
+- name: Configuration (DHCP ranges and reservations, options, DNS)
+  ansible.builtin.template:
+    src: dnsmasq.conf.j2
+    dest: "{{ dnsmasq_conf }}"
+    owner: root
+    group: root
+    mode: "0644"
+    validate: dnsmasq --test --conf-file=%s
+  notify: Restart dnsmasq
+
+# The hand-made records were moved to addressing.yml; this host resolves the
+# rack through its own dnsmasq (resolv.conf: 127.0.0.1).
+- name: Local /etc/hosts of the DNS server
+  ansible.builtin.template:
+    src: hosts.j2
+    dest: /etc/hosts
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    dnsmasq_self: "{{ addressing.hosts | selectattr('name', '==', inventory_hostname) | first }}"
+
+- name: Remove the hand-made drop-ins
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ dnsmasq_removed_dropins }}"
+  notify: Restart dnsmasq

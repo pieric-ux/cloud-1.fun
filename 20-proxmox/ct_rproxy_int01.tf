@@ -21,8 +21,8 @@ resource "proxmox_virtual_environment_container" "rproxy_int01" {
     hostname = "rproxy-int01"
     ip_config {
       ipv4 {
-        address = "10.1.240.33/24"
-        gateway = "10.1.240.1"
+        address = "${local.host_ip["rproxy-int01"]}/24"
+        gateway = local.mgmt_gw
       }
     }
   }

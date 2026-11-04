@@ -1,0 +1,11 @@
+# {{ ansible_managed }}
+# Local names only: the records of the rack are in {{ dnsmasq_hosts_file }}
+# (network/addressing.yml), this host resolves them through dnsmasq.
+127.0.0.1	localhost
+{{ dnsmasq_self.ip }}	{{ dnsmasq_self.name }}.{{ addressing.domain }} {{ dnsmasq_self.name }}
+
+::1	ip6-localhost ip6-loopback
+fe00::0	ip6-localnet
+ff00::0	ip6-mcastprefix
+ff02::1	ip6-allnodes
+ff02::2	ip6-allrouters

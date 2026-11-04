@@ -1,0 +1,74 @@
+# Addressing of the rack: the single source of DHCP and DNS (role dnsmasq
+# on dhcp-dns) and of the guest addresses (Terraform, 20-proxmox).
+# Add a machine: one line in `hosts`; a web service behind the reverse
+# proxy: one name in `services`. Then `make dns-check` / `make dns-apply`.
+---
+domain: cloud-1.fun
+dns_server: 10.1.240.31
+ntp_server: 10.1.255.2
+# rproxy-int01: every name of `services` points to it.
+reverse_proxy: 10.1.240.33
+# Recursion for everything outside the domain.
+upstream_dns: [208.67.222.222]
+dhcp_interface: ens18
+
+networks:
+  prod: {gateway: 10.1.10.1, dhcp_range: [10.1.10.100, 10.1.10.250], lease: 12h}
+  dmz: {gateway: 10.1.30.1, dhcp_range: [10.1.30.100, 10.1.30.250], lease: 12h}
+  mgmt: {gateway: 10.1.240.1, dhcp_range: [10.1.240.100, 10.1.240.150], lease: 12h}
+
+# One entry per machine: DNS name (+ short name), address, and when it gets
+# it from DHCP: its MAC (or `dhcp: true` for a reservation by name, the k3s
+# nodes) and `dhcp_name` when the DHCP name differs from the DNS one.
+# `dns: false`: DHCP reservation only, no DNS record (name from the lease).
+hosts:
+  # Network
+  - {name: l3sw, ip: 10.1.240.1, mac: "f0:25:72:2e:36:c5"}
+  - {name: l2sw, ip: 10.1.240.2, mac: "54:8a:ba:69:e9:c1"}
+  - {name: wifi-ap, ip: 10.1.240.3, mac: "18:e7:28:35:f8:05"}
+  - {name: pfsense01, ip: 10.1.255.2, mac: "a8:b8:e0:01:22:2c", dhcp_name: pfsense, aliases: [ntp]}
+  # Hypervisors, BMCs, quorum
+  - {name: pve01, ip: 10.1.240.11, mac: "94:18:82:7b:b8:44"}
+  - {name: pve02, ip: 10.1.240.12, mac: "f4:03:43:3d:ee:78"}
+  - {name: qdevice03, ip: 10.1.240.13, mac: "2c:cf:67:37:4a:48"}
+  - {name: ilo-teemo01, ip: 10.1.240.21, mac: "94:18:82:74:4b:b0", dhcp_name: ilo-teemo}
+  - {name: ilo-yuumi01, ip: 10.1.240.22, mac: "f4:03:43:41:a1:dc", dhcp_name: ilo-yuumi}
+  # Storage
+  - {name: nas01, ip: 10.1.20.21, mac: "00:11:32:1f:53:3b", dhcp_name: nas}
+  # MGMT guests
+  - {name: pbs, ip: 10.1.240.30, mac: "bc:24:11:71:7d:52"}
+  - {name: dhcp-dns, ip: 10.1.240.31}
+  - {name: vault-01, ip: 10.1.240.32}
+  - {name: rproxy-int01, ip: 10.1.240.33}
+  - {name: ansible, ip: 10.1.240.35}
+  - {name: prometheus01, ip: 10.1.240.36}
+  - {name: grafana01, ip: 10.1.240.37}
+  - {name: gitea01, ip: 10.1.240.38}
+  # Cyber
+  - {name: c2hak5, ip: 10.1.240.81}
+  - {name: mk7, ip: 10.1.240.82, mac: "00:3f:10:aa:6c:38"}
+  - {name: sliver-c2, ip: 10.1.240.83}
+  - {name: rea-01, ip: 10.1.240.84}
+  - {name: rea-02, ip: 10.1.240.86}
+  - {name: captive-portal, ip: 10.1.240.87}
+  # k3s (PROD): reservation by name, DNS from the lease
+  - {name: k3s-control, ip: 10.1.10.10, dhcp: true, dns: false}
+  - {name: k3s-worker-1, ip: 10.1.10.11, dhcp: true, dns: false}
+  - {name: k3s-worker-2, ip: 10.1.10.12, dhcp: true, dns: false}
+
+# Web services behind rproxy-int01 (<name>.cloud-1.fun -> reverse_proxy).
+services:
+  - vault
+  - pve
+  - pbs-int
+  - pbs-out
+  - pfsense
+  - ilo-teemo
+  - ilo-yuumi
+  - nas
+  - wifi
+  - c2
+  - prometheus
+  - grafana
+  - ingress
+  - gitea

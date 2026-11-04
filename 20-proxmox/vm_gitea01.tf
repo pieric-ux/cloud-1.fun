@@ -48,8 +48,8 @@ resource "proxmox_virtual_environment_vm" "gitea01" {
     interface    = "ide0"
     ip_config {
       ipv4 {
-        address = "10.1.240.38/24"
-        gateway = "10.1.240.1"
+        address = "${local.host_ip["gitea01"]}/24"
+        gateway = local.mgmt_gw
       }
     }
     dns {

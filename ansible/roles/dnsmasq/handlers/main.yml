@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: MIT-0
+---
+- name: Restart dnsmasq
+  ansible.builtin.systemd_service:
+    name: dnsmasq
+    state: restarted
+
+# dnsmasq re-reads its hosts files on SIGHUP (ExecReload of its unit).
+- name: Reload dnsmasq
+  ansible.builtin.systemd_service:
+    name: dnsmasq
+    state: reloaded

@@ -45,8 +45,8 @@ resource "proxmox_virtual_environment_vm" "grafana01" {
     interface    = "ide1"
     ip_config {
       ipv4 {
-        address = "10.1.240.37/24"
-        gateway = "10.1.240.1"
+        address = "${local.host_ip["grafana01"]}/24"
+        gateway = local.mgmt_gw
       }
     }
   }

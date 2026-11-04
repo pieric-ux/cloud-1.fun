@@ -28,6 +28,15 @@
         name: cis-hardening
       tags: cis-hardening
 
+- name: DHCP and DNS of the rack (from network/addressing.yml)
+  hosts: dns
+
+  tasks:
+    - name: Dnsmasq
+      ansible.builtin.import_role:
+        name: dnsmasq
+      tags: dnsmasq
+
 - name: Node Exporter on every Linux host
   hosts: linux
 

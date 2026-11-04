@@ -39,8 +39,8 @@ resource "proxmox_virtual_environment_vm" "sliver_c2" {
     }
     ip_config {
       ipv4 {
-        address = "10.1.240.83/24"
-        gateway = "10.1.240.1"
+        address = "${local.host_ip["sliver-c2"]}/24"
+        gateway = local.mgmt_gw
       }
     }
   }

@@ -21,6 +21,10 @@ Import method, for a guest added by hand:
 4. `terraform plan -out=tfplan` then `terraform apply tfplan`: recorded in the
    state, nothing changes on Proxmox.
 
+**Addresses come from `network/addressing.yml`** (`locals.tf`): the same file
+generates DHCP and DNS (role `dnsmasq`). The Makefile mounts the whole repo
+into the Terraform container for that.
+
 **Placement belongs to the HA**: the 10 HA guests ignore `node_name`
 (`lifecycle { ignore_changes = [node_name] }`), the rules of `ha.tf` decide
 where they run. Without it, a failover or a migration would make the next

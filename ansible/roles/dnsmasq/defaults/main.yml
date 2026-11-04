@@ -1,0 +1,10 @@
+---
+# Single source of the addressing (also read by Terraform).
+dnsmasq_addressing_file: "{{ playbook_dir }}/../network/addressing.yml"
+dnsmasq_conf: /etc/dnsmasq.conf
+# DNS records of the rack (hosts format), instead of /etc/hosts (no-hosts).
+dnsmasq_hosts_file: /etc/dnsmasq.hosts
+dnsmasq_netmask: 255.255.255.0
+# Hand-made drop-ins replaced by the generated configuration.
+dnsmasq_removed_dropins:
+  - /etc/dnsmasq.d/sonos-trap.conf

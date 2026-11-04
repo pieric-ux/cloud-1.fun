@@ -1,0 +1,36 @@
+# {{ ansible_managed }}
+# Generated from network/addressing.yml (role dnsmasq): edit that file.
+
+# DNS
+domain-needed
+bogus-priv
+filterwin2k
+no-resolv
+{% for server in addressing.upstream_dns %}
+server={{ server }}
+{% endfor %}
+domain={{ addressing.domain }}
+expand-hosts
+# Records of the rack come from {{ dnsmasq_hosts_file }}, not /etc/hosts.
+no-hosts
+addn-hosts={{ dnsmasq_hosts_file }}
+
+interface={{ addressing.dhcp_interface }}
+bind-interfaces
+
+# DHCP
+dhcp-authoritative
+{% for name, net in addressing.networks.items() %}
+dhcp-range=set:{{ name }},{{ net.dhcp_range[0] }},{{ net.dhcp_range[1] }},{{ dnsmasq_netmask }},{{ net.lease }}
+{% endfor %}
+{% for name, net in addressing.networks.items() %}
+dhcp-option=tag:{{ name }},option:router,{{ net.gateway }}
+{% endfor %}
+dhcp-option=option:domain-name,{{ addressing.domain }}
+dhcp-option=option:dns-server,{{ addressing.dns_server }}
+dhcp-option=option:ntp-server,{{ addressing.ntp_server }}
+
+# Reservations
+{% for host in addressing.hosts if host.mac is defined or host.dhcp | default(false) %}
+dhcp-host={{ (host.mac ~ ',') if host.mac is defined else '' }}{{ host.dhcp_name | default(host.name) }},{{ host.ip }},infinite
+{% endfor %}

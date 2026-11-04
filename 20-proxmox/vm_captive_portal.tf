@@ -38,8 +38,8 @@ resource "proxmox_virtual_environment_vm" "captive_portal" {
     }
     ip_config {
       ipv4 {
-        address = "10.1.240.87/24"
-        gateway = "10.1.240.1"
+        address = "${local.host_ip["captive-portal"]}/24"
+        gateway = local.mgmt_gw
       }
     }
     user_account {

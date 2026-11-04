@@ -9,8 +9,9 @@ PLAYBOOK    := cd $(ANSIBLE_DIR) && ansible-playbook
 ISO_PORT    ?= 8080
 # Terraform from the official image (no local install), same version as the
 # one the code was validated with.
-# HCP Terraform login (state backend) read from ~/.terraform.d.
-TERRAFORM   := docker run --rm -it -v $(CURDIR)/20-proxmox:/w -w /w \
+# HCP Terraform login (state backend) read from ~/.terraform.d. The whole repo
+# is mounted: the code reads network/addressing.yml.
+TERRAFORM   := docker run --rm -it -v $(CURDIR):/w -w /w/20-proxmox \
 	-v $(HOME)/.terraform.d:/root/.terraform.d hashicorp/terraform:1.9.8
 
 # Refuse a target that changes something unless CONFIRM=yes is given.
@@ -29,7 +30,7 @@ endef
 .PHONY: help preflight lint \
 	network network-check network-apply pfsense-backup \
 	bootstrap iso media-test serve-iso install pve-config-check pve-config pbs-config-check pbs-config \
-	storage-check storage-apply storage-apply-check templates-check templates \
+	storage-check storage-apply storage-apply-check dns-check dns-apply templates-check templates \
 	vms-tfvars vms-init vms-plan vms-apply \
 	config-check config k8s-check k8s-apply
 
@@ -111,6 +112,13 @@ storage-apply: ## Create the missing iSCSI objects on the NAS, then audit (CONFI
 
 storage-apply-check: ## Preview the iSCSI objects that storage-apply would create (no change)
 	$(PLAYBOOK) 05-storage.yml --tags storage-apply --check --diff
+
+dns-check: ## Preview DHCP and DNS generated from network/addressing.yml (no change)
+	$(PLAYBOOK) 30-config.yml --tags dnsmasq --check --diff
+
+dns-apply: ## Apply DHCP and DNS from network/addressing.yml (CONFIRM=yes)
+	$(call need_confirm,the DHCP and DNS of the rack)
+	$(PLAYBOOK) 30-config.yml --tags dnsmasq
 
 # --- 15 templates: Packer (local install: serves the answer files over HTTP
 # to the VM, on the address of this machine seen from VLAN 240) -------------

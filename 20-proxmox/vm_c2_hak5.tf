@@ -35,8 +35,8 @@ resource "proxmox_virtual_environment_vm" "c2_hak5" {
     interface    = "ide1"
     ip_config {
       ipv4 {
-        address = "10.1.240.81/24"
-        gateway = "10.1.240.1"
+        address = "${local.host_ip["c2hak5"]}/24"
+        gateway = local.mgmt_gw
       }
     }
   }

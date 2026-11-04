@@ -377,7 +377,9 @@ remplacement : restaurer sur le nœud du code.
 make config-check
 make config CONFIRM=yes
 ```
-Inclut la supervision (node-exporter, Prometheus, Grafana) et k3s (le
+Inclut le DHCP et le DNS de dhcp-dns (générés depuis
+`network/addressing.yml`, aussi : `make dns-check` / `make dns-apply`), la
+supervision (node-exporter, Prometheus, Grafana) et k3s (le
 control-plane d'abord, puis les workers un par un).
 
 ### 8.10 Applications du cluster k3s
