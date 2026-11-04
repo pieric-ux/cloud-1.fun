@@ -1,0 +1,7 @@
+---
+common_motd_role: git
+# Gitea (role gitea): secrets in vault.yml, generated on 2026-11-04.
+gitea_secret_key: "{{ vault_gitea_secret_key }}"
+gitea_internal_token: "{{ vault_gitea_internal_token }}"
+gitea_jwt_secret: "{{ vault_gitea_jwt_secret }}"
+gitea_admin_password: "{{ vault_gitea_admin_password }}"

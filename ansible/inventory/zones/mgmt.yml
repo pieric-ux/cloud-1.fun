@@ -29,6 +29,11 @@ all:
               ansible_host: rproxy-int01.cloud-1.fun
             # rproxy-ext:
             #   ansible_host: rproxy-ext01.cloud-1.fun
+        # Git server of the rack (Gitea), mirrored to GitHub.
+        git:
+          hosts:
+            gitea01:
+              ansible_host: gitea01.cloud-1.fun
         automation:
           hosts:
             ansible:

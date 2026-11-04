@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  author: pieric
+  description: Gitea git server (binary release, SQLite, systemd, built-in SSH)
+  license: MIT
+  min_ansible_version: "2.17"
+dependencies: []

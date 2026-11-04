@@ -84,6 +84,15 @@
         name: grafana
       tags: grafana
 
+- name: Git server
+  hosts: git
+
+  tasks:
+    - name: Gitea
+      ansible.builtin.import_role:
+        name: gitea
+      tags: gitea
+
 - name: Kubernetes (k3s) control plane
   hosts: k3s_control
 

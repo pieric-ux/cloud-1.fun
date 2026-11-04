@@ -1,0 +1,120 @@
+---
+- name: The secrets must be provided
+  ansible.builtin.assert:
+    that:
+      - gitea_secret_key | length > 0
+      - gitea_internal_token | length > 0
+      - gitea_jwt_secret | length > 0
+      - gitea_admin_password | length > 0
+    fail_msg: Gitea secrets are empty, set them in group_vars/git/vault.yml
+    quiet: true
+  no_log: true
+
+- name: Git package (Gitea runs the git binary)
+  ansible.builtin.apt:
+    name: git
+    state: present
+
+- name: Dedicated system group
+  ansible.builtin.group:
+    name: "{{ gitea_user }}"
+    system: true
+
+- name: Dedicated system user
+  ansible.builtin.user:
+    name: "{{ gitea_user }}"
+    group: "{{ gitea_user }}"
+    system: true
+    home: "{{ gitea_home }}"
+    shell: /bin/bash
+    create_home: false
+
+- name: Data directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ gitea_user }}"
+    group: "{{ gitea_user }}"
+    mode: "0750"
+  loop:
+    - "{{ gitea_home }}"
+    - "{{ gitea_home }}/custom"
+    - "{{ gitea_home }}/data"
+    - "{{ gitea_home }}/log"
+
+- name: Configuration directory
+  ansible.builtin.file:
+    path: "{{ gitea_config_dir }}"
+    state: directory
+    owner: root
+    group: "{{ gitea_user }}"
+    mode: "0750"
+
+- name: Gitea binary (checksum verified)
+  ansible.builtin.get_url:
+    url: "{{ gitea_url }}"
+    dest: "{{ gitea_binary }}"
+    checksum: "{{ gitea_checksum }}"
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Restart gitea
+
+- name: Configuration
+  ansible.builtin.template:
+    src: app.ini.j2
+    dest: "{{ gitea_config_dir }}/app.ini"
+    owner: root
+    group: "{{ gitea_user }}"
+    mode: "0640"
+  no_log: true
+  notify: Restart gitea
+
+- name: Systemd unit
+  ansible.builtin.template:
+    src: gitea.service.j2
+    dest: /etc/systemd/system/gitea.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart gitea
+
+- name: Enabled at boot and running
+  ansible.builtin.systemd_service:
+    name: gitea
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Apply a pending restart before the checks
+  ansible.builtin.meta: flush_handlers
+
+- name: Gitea answers
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ gitea_http_port }}/api/healthz"
+  register: gitea_health
+  until: gitea_health.status == 200
+  retries: 20
+  delay: 3
+  when: not ansible_check_mode
+
+- name: Existing admin accounts
+  ansible.builtin.command: "{{ gitea_binary }} --config {{ gitea_config_dir }}/app.ini admin user list --admin"
+  become: true
+  become_user: "{{ gitea_user }}"
+  register: gitea_admins
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: First admin account
+  ansible.builtin.command: >-
+    {{ gitea_binary }} --config {{ gitea_config_dir }}/app.ini admin user create --admin
+    --username {{ gitea_admin_user }} --email {{ gitea_admin_email }}
+    --password {{ gitea_admin_password }} --must-change-password=false
+  become: true
+  become_user: "{{ gitea_user }}"
+  changed_when: true
+  no_log: true
+  when:
+    - not ansible_check_mode
+    - gitea_admin_user not in gitea_admins.stdout

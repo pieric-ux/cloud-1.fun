@@ -1,0 +1,28 @@
+---
+# Official binary, checksum from the release page (gitea-<v>-linux-amd64.sha256).
+gitea_version: "28.2.0"
+gitea_checksum: "sha256:15681fc615d56611c274f52803fef4d6d5316b620f93b677dd4b831a74e50b9f"
+gitea_url: "https://github.com/go-gitea/gitea/releases/download/v{{ gitea_version }}/gitea-{{ gitea_version }}-linux-amd64"
+gitea_binary: /usr/local/bin/gitea
+
+gitea_user: git
+gitea_home: /var/lib/gitea
+gitea_config_dir: /etc/gitea
+
+# Web UI behind the reverse proxy (rproxy-int01, TLS there), git over SSH
+# straight to the VM on its own port (the system sshd keeps port 22).
+gitea_domain: gitea.cloud-1.fun
+gitea_root_url: "https://{{ gitea_domain }}/"
+gitea_http_port: 3000
+gitea_ssh_domain: "{{ inventory_hostname }}.cloud-1.fun"
+gitea_ssh_port: 2222
+
+# Secrets (group_vars/git/vault.yml).
+gitea_secret_key: ""
+gitea_internal_token: ""
+gitea_jwt_secret: ""
+
+# First admin account, created when missing.
+gitea_admin_user: pieric
+gitea_admin_email: demont.pieric@protonmail.com
+gitea_admin_password: ""

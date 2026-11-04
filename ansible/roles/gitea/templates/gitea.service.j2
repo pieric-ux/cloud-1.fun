@@ -1,0 +1,22 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Gitea
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User={{ gitea_user }}
+Group={{ gitea_user }}
+WorkingDirectory={{ gitea_home }}
+ExecStart={{ gitea_binary }} web --config {{ gitea_config_dir }}/app.ini
+Environment=HOME={{ gitea_home }} GITEA_WORK_DIR={{ gitea_home }}
+Restart=always
+RestartSec=5
+# Hardening: Gitea only writes in its home.
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths={{ gitea_home }}
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
