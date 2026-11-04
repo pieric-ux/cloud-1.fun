@@ -1,6 +1,6 @@
 # High availability (PVE 9: rules replace the HA groups). A guest restarts on
 # the other node when its node fails; the rules say where it runs normally.
-# Not HA: pbs (disk local to pve02), sliver-c2, captive-portal.
+# Not HA: pbs (disk local to pve02), sliver-c2.
 
 resource "proxmox_haresource" "dhcp_dns" {
   resource_id  = "vm:${proxmox_virtual_environment_vm.dhcp_dns.id}"

@@ -26,7 +26,8 @@ Ansible, `vm:2406` prometheus01, `vm:2407` grafana01, `vm:2481` c2-hak5,
 2401, 2406), `home-pve02` (2402, 2407, 1002), `resource-affinity` positive
 `prometheus-with-dns` (2401 + 2406), négative `k3s-workers-apart` (1001 et
 1002 jamais sur le même nœud, depuis le 2026-11-04 ; avant : les trois k3s
-forcés ensemble). Hors HA : pbs (disque local), sliver-c2, captive-portal.
+forcés ensemble). Hors HA : pbs (disque local), sliver-c2 (captive-portal : VM de test, hors
+de l'infra et du code).
 
 **Modèle CPU** des VMs migrables : `Haswell-noTSX-IBRS,flags=+pcid;+md-clear;+ssbd`
 (nœud le plus ancien ; `host` fait planter la migration pve02 → pve01).

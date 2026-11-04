@@ -50,7 +50,6 @@ hosts:
   - {name: sliver-c2, ip: 10.1.240.83}
   - {name: rea-01, ip: 10.1.240.84}
   - {name: rea-02, ip: 10.1.240.86}
-  - {name: captive-portal, ip: 10.1.240.87}
   # k3s (PROD): reservation by name, DNS from the lease
   - {name: k3s-control, ip: 10.1.10.10, dhcp: true, dns: false}
   - {name: k3s-worker-1, ip: 10.1.10.11, dhcp: true, dns: false}

@@ -17,5 +17,6 @@ reverse proxy: one name in `services` (plus its site on rproxy-int01).
 Migrated on 2026-11-04 from the hand-made `dnsmasq.conf` and `/etc/hosts`:
 same DHCP configuration, same DNS answers except the intended changes (short
 names for every machine, `mk7` no longer answering the address of sliver-c2,
-gitea, captive-portal added). `/etc/hosts` of dhcp-dns is no longer read by
+gitea and captive-portal added; captive-portal removed again the same
+day, a testing VM outside the infrastructure). `/etc/hosts` of dhcp-dns is no longer read by
 dnsmasq (`no-hosts`) and holds only its local names.

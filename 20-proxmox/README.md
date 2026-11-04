@@ -2,9 +2,11 @@
 
 Guests of the Proxmox cluster with Terraform (`bpg/proxmox`).
 
-**Status: the 13 running guests are imported** (2026-11-04), the plan shows
+**Status: the running guests of the infrastructure are imported** (2026-11-04), the plan shows
 no change. One file per guest (`vm_<name>.tf`, `ct_<name>.tf` for the LXC
-containers); templates (Packer, layer 15) and stopped test VMs are left out.
+containers); templates (Packer, layer 15), stopped test VMs and testing VMs
+outside the infrastructure (captive-portal, removed from the state on
+2026-11-04 without being destroyed) are left out.
 `inventory.tf` lists every VM of the cluster (output only). `ha.tf`: the 10
 HA resources and the 4 HA rules (PVE 9 rules, no HA groups; `proxmox_haresource` / `proxmox_harule`, the new names of the provider), each HA
 resource referencing its guest and each rule its HA resources, so a rebuild
@@ -30,8 +32,8 @@ into the Terraform container for that.
 where they run. Without it, a failover or a migration would make the next
 plan **replace** the moved guest (for the provider, a new node means a new
 VM). Their `node_name` in the code is the node they were imported on, only
-used if Terraform ever creates them. Guests outside the HA (pbs, sliver-c2,
-captive-portal) keep a strict `node_name`.
+used if Terraform ever creates them. Guests outside the HA (pbs, sliver-c2) keep
+a strict `node_name`.
 
 Every VM sets its CPU explicitly (`Haswell-noTSX-IBRS` + flags): on a clone,
 the provider would otherwise apply its own default (`qemu64`) instead of the

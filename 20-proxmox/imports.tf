@@ -51,7 +51,3 @@ import {
   to = proxmox_virtual_environment_vm.sliver_c2
   id = "pve01/2483"
 }
-import {
-  to = proxmox_virtual_environment_vm.captive_portal
-  id = "pve01/2486"
-}
