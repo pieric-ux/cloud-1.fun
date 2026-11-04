@@ -11,6 +11,11 @@ Taken from `42-piscine-infra/infra04/packer/pieric`, with:
   clones inherit it, and a VM started with `host` on pve02 crashes when it
   migrates to pve01 (older CPU). The team flags (`+pcid;+md-clear;+ssbd`)
   are not settable through the Packer plugin: added on the clones.
+- Debian: one root partition, last on the disk, and a swap file instead of
+  the swap partition of the `atomic` recipe, which sat after the root and
+  kept cloud-init from growing it on a clone with a bigger disk (seen on
+  gitea01, fixed by hand there). Template 8005 still has the old layout
+  until it is rebuilt.
 - one directory, shared variables (`variables.pkr.hcl`), API token and
   addresses in `templates.pkrvars.hcl` (gitignored).
 

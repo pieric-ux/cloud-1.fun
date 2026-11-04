@@ -83,6 +83,14 @@ resource "proxmox_haresource" "k3s_worker_2" {
 }
 
 # Normal placement on pve01 (not strict: they move to pve02 if pve01 fails).
+resource "proxmox_haresource" "gitea01" {
+  resource_id  = "vm:${proxmox_virtual_environment_vm.gitea01.id}"
+  state        = "started"
+  comment      = "Gitea"
+  max_restart  = 3
+  max_relocate = 2
+}
+
 resource "proxmox_harule" "home_pve01" {
   rule = "home-pve01"
   type = "node-affinity"
@@ -109,6 +117,7 @@ resource "proxmox_harule" "home_pve02" {
     proxmox_haresource.vault_01.resource_id,
     proxmox_haresource.grafana01.resource_id,
     proxmox_haresource.k3s_worker_2.resource_id,
+    proxmox_haresource.gitea01.resource_id,
   ]
 }
 
