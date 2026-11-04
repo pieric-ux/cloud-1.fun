@@ -28,8 +28,10 @@
         name: cis-hardening
       tags: cis-hardening
 
+# Not vault-01: an application container (Vaultwarden OCI image, Alpine
+# without SSH nor Python); rebuilt from the image plus a restore of /data.
 - name: Automation account in the LXC containers (through pct)
-  hosts: lxc
+  hosts: lxc:!vault_server
   gather_facts: false
 
   tasks:

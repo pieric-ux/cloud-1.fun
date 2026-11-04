@@ -355,6 +355,12 @@ pas sauvegardé). Ordre : dhcp-dns (2401, DNS de tout le reste), vault-01
 qmrestore pbs-offsite:backup/vm/2401/<date> 2401 --storage synology-lvm
 pct restore 2402 pbs-offsite:backup/ct/2402/<date> --storage synology-lvm
 ```
+**vault-01 (Vaultwarden)** est un conteneur applicatif (image OCI, Alpine
+sans SSH ni Python, hors Ansible) : toute sa config et ses données sont dans
+`/data` (`.env`, `config.json`, `db.sqlite3`, `rsa_key.pem`, pièces
+jointes). Restaurer le conteneur entier, ou le recréer depuis l'image
+Vaultwarden et ne restaurer que `/data` (PBS > *File Restore*).
+
 Les templates (8001-8005) sont dans les backups aussi ; sinon les
 reconstruire : `make templates CONFIRM=yes` (`15-templates/README.md`).
 

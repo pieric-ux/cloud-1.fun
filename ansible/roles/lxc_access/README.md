@@ -9,3 +9,7 @@ and its sudoers file only when they differ.
 
 Inventory: `lxc_vmid` per container (`inventory/lxc.yml`). Not run in
 `--check` (pct exec has no dry run).
+
+Applied to rproxy-int01 only: vault-01 is an application container
+(Vaultwarden OCI image, Alpine without SSH nor Python) that Ansible cannot
+manage; it comes back from its backup (`/data`), see the runbook.
