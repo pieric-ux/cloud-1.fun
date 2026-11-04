@@ -1,2 +1,4 @@
 ---
 common_motd_role: dns
+# Prometheus scrapes it by name (ansible_host stays the IP: it is the DNS).
+prometheus_node_target: dhcp-dns.cloud-1.fun

@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: MIT-0
+---
+# prometheus-pve-exporter from PyPI, in a venv. Queried locally by Prometheus.
+# code: language=ansible
+pve_exporter_version: "3.10.2"
+
+pve_exporter_user: pve_exporter
+pve_exporter_venv: /opt/pve-exporter
+pve_exporter_config: /etc/prometheus/pve.yml
+
+pve_exporter_listen_address: "127.0.0.1"
+pve_exporter_port: 9221
+
+# PVE read-only API token (PVEAuditor). The secret is NEVER in the repo:
+# pass it with --extra-vars pve_exporter_token=... or Ansible Vault.
+pve_exporter_pve_user: "monitoring@pve"
+pve_exporter_token_name: "exporter"
+pve_exporter_token: ""
+pve_exporter_verify_ssl: false
+
+# The "config" collector reads VM config options, which needs VM.Config.Options
+# (not granted by the read-only PVEAuditor role). Disabled so the token stays
+# strictly read-only; node/VM/storage status and resource metrics are unaffected.
+pve_exporter_extra_args: "--no-collector.config"

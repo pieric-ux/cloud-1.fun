@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: MIT-0
+---
+# tasks file to get the join token fetched by k3s-control
+# k3s-control stores it as a fact on the control-plane host. The fact only
+# exists when k3s-control ran in the same playbook run (site.yml): otherwise
+# the token file is read again on the control plane.
+- name: Read node token on the control plane
+  ansible.builtin.slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  register: k3s_node_token_raw
+  delegate_to: "{{ groups['k3s_control'][0] }}"
+  run_once: true
+  when: hostvars[groups['k3s_control'][0]].k3s_node_token is not defined
+  no_log: true
+
+- name: Store node token as a fact
+  ansible.builtin.set_fact:
+    k3s_node_token: >-
+      {{ hostvars[groups['k3s_control'][0]].k3s_node_token
+         if hostvars[groups['k3s_control'][0]].k3s_node_token is defined
+         else k3s_node_token_raw.content | b64decode | trim }}
+  no_log: true

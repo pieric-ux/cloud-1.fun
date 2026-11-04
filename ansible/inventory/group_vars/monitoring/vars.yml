@@ -1,0 +1,8 @@
+---
+common_motd_role: monitoring
+
+# Secrets in vault.yml (copied from prometheus01 on 2026-11-04).
+pve_exporter_token: "{{ vault_pve_exporter_token }}"
+# One community for the polled devices and the traps.
+snmp_exporter_community: "{{ vault_snmp_community }}"
+snmptrapd_community: "{{ vault_snmp_community }}"

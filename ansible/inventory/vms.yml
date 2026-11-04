@@ -10,3 +10,10 @@ all:
         monitoring:
         cyber:
         prod:
+    # Linux hosts scraped by Prometheus (Node Exporter, layer 30).
+    linux:
+      children:
+        proxmox:
+        dns:
+        monitoring:
+        infra_pi:

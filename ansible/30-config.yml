@@ -1,7 +1,8 @@
 ---
-# Layer 30 - OS configuration of the VMs (roles from infra04).
+# Layer 30 - OS configuration of the guests: base (infra04), monitoring
+# (infra06), k3s (infra05).
 #   default        every role
-#   --tags <role>  one role only, e.g. --tags ssh-hardening
+#   --tags <role>  one role only, e.g. --tags ssh-hardening, prometheus, k3s
 
 - name: Apply common configuration, admin accounts and SSH hardening to VMs
   hosts: vms:!lxc
@@ -26,3 +27,70 @@
       ansible.builtin.import_role:
         name: cis-hardening
       tags: cis-hardening
+
+- name: Node Exporter on every Linux host
+  hosts: linux
+
+  tasks:
+    - name: Node Exporter
+      ansible.builtin.import_role:
+        name: node-exporter
+      tags: node-exporter
+
+- name: Prometheus, Alertmanager and the exporters
+  hosts: prometheus
+
+  tasks:
+    - name: Alertmanager
+      ansible.builtin.import_role:
+        name: alertmanager
+      tags: alertmanager
+
+    - name: Proxmox VE exporter
+      ansible.builtin.import_role:
+        name: pve-exporter
+      tags: pve-exporter
+
+    - name: SNMP exporter (switches, pfSense, NAS)
+      ansible.builtin.import_role:
+        name: snmp-exporter
+      tags: snmp-exporter
+
+    - name: SNMP trap receiver
+      ansible.builtin.import_role:
+        name: snmptrapd
+      tags: snmptrapd
+
+    - name: Prometheus
+      ansible.builtin.import_role:
+        name: prometheus
+      tags: prometheus
+
+- name: Grafana
+  hosts: grafana
+
+  tasks:
+    - name: Grafana
+      ansible.builtin.import_role:
+        name: grafana
+      tags: grafana
+
+- name: Kubernetes (k3s) control plane
+  hosts: k3s_control
+
+  tasks:
+    - name: The k3s server and Calico
+      ansible.builtin.import_role:
+        name: k3s-control
+      tags: [k3s, k3s-control]
+
+# One worker at a time: the cluster keeps a worker if a join goes wrong.
+- name: Kubernetes (k3s) workers
+  hosts: k3s_worker
+  serial: 1
+
+  tasks:
+    - name: The k3s agent
+      ansible.builtin.import_role:
+        name: k3s-worker
+      tags: [k3s, k3s-worker]

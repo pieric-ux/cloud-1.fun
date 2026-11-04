@@ -1,0 +1,1114 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "13.0.0" },
+    { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" },
+    { "type": "panel", "id": "stat", "name": "Stat", "version": "" },
+    { "type": "panel", "id": "timeseries", "name": "Time series", "version": "" },
+    { "type": "panel", "id": "table", "name": "Table", "version": "" },
+    { "type": "panel", "id": "bargauge", "name": "Bar gauge", "version": "" },
+    { "type": "panel", "id": "state-timeline", "name": "State timeline", "version": "" },
+    { "type": "panel", "id": "gauge", "name": "Gauge", "version": "" }
+  ],
+  "id": null,
+  "uid": "switches-l2l3",
+  "title": "Switches — L2 & L3",
+  "description": "Cisco 2960-X (L2) & 3560-V2 (L3) — SNMP if_mib",
+  "tags": ["infra", "module06", "snmp", "switches"],
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-3h", "to": "now" },
+  "fiscalYearStartMonth": 0,
+  "liveNow": false,
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "name": "switch",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "query": "label_values(ifOperStatus{job=\"snmp\", instance=~\"l.*\"}, instance)",
+        "regex": "",
+        "multi": true,
+        "includeAll": true,
+        "current": { "text": "All", "value": "$__all" },
+        "refresh": 1,
+        "sort": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 100,
+      "title": "Overview",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "id": 1,
+      "title": "Ports UP",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(ifOperStatus{instance=~\"$switch\", job=\"snmp\", ifDescr=~\"(Fast|Gigabit)Ethernet.*\"} == 1)",
+          "legendFormat": "UP",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "color": { "mode": "thresholds" },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "graphMode": "none",
+        "colorMode": "background_solid",
+        "justifyMode": "center",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 2,
+      "title": "Ports DOWN",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 4, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(ifOperStatus{instance=~\"$switch\", job=\"snmp\", ifDescr=~\"(Fast|Gigabit)Ethernet.*\"} == 2)",
+          "legendFormat": "DOWN",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 20 },
+              { "color": "orange", "value": 40 }
+            ]
+          },
+          "color": { "mode": "thresholds" },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "graphMode": "none",
+        "colorMode": "background_solid",
+        "justifyMode": "center",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Errors (5m)",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 8, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(ifInErrors{instance=~\"$switch\", job=\"snmp\"}[5m])) + sum(increase(ifOutErrors{instance=~\"$switch\", job=\"snmp\"}[5m]))",
+          "legendFormat": "Errors",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 10 }
+            ]
+          },
+          "color": { "mode": "thresholds" },
+          "noValue": "0",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "graphMode": "none",
+        "colorMode": "background_solid",
+        "justifyMode": "center",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Discards (5m)",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 12, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(ifInDiscards{instance=~\"$switch\", job=\"snmp\"}[5m])) + sum(increase(ifOutDiscards{instance=~\"$switch\", job=\"snmp\"}[5m]))",
+          "legendFormat": "Discards",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 50 }
+            ]
+          },
+          "color": { "mode": "thresholds" },
+          "noValue": "0",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "graphMode": "none",
+        "colorMode": "background_solid",
+        "justifyMode": "center",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Total throughput",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 16, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(ifHCInOctets{instance=~\"$switch\", job=\"snmp\", ifDescr=~\"(Fast|Gigabit)Ethernet.*\"}[5m])) * 8",
+          "legendFormat": "IN",
+          "instant": true
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(ifHCOutOctets{instance=~\"$switch\", job=\"snmp\", ifDescr=~\"(Fast|Gigabit)Ethernet.*\"}[5m])) * 8",
+          "legendFormat": "OUT",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue", "value": null }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "graphMode": "none",
+        "colorMode": "value",
+        "justifyMode": "center",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 6,
+      "title": "SNMP scrape duration",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 20, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "snmp_scrape_duration_seconds{instance=~\"$switch\"}",
+          "legendFormat": "{{ instance }}",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5 },
+              { "color": "red", "value": 10 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "graphMode": "area",
+        "colorMode": "value",
+        "justifyMode": "center",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 200,
+      "title": "Port status",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+      "collapsed": false
+    },
+    {
+      "id": 7,
+      "title": "Port status — L3 switch (3560-V2)",
+      "type": "state-timeline",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 7 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "ifOperStatus{instance=\"l3sw.cloud-1.fun\", ifDescr=~\"(Fast|Gigabit)Ethernet.*\"}",
+          "legendFormat": "{{ ifDescr }}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "UP", "color": "green" } } },
+            { "type": "value", "options": { "2": { "text": "DOWN", "color": "red" } } },
+            { "type": "value", "options": { "3": { "text": "TESTING", "color": "yellow" } } }
+          ],
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showValue": "auto",
+        "mergeValues": true,
+        "alignValue": "center",
+        "rowHeight": 0.75,
+        "legend": { "displayMode": "hidden" },
+        "tooltip": { "mode": "single" }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Port status — L2 switch (2960-X)",
+      "type": "state-timeline",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 7 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "ifOperStatus{instance=\"l2sw.cloud-1.fun\", ifDescr=~\"(Gigabit)Ethernet.*\"}",
+          "legendFormat": "{{ ifDescr }}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "UP", "color": "green" } } },
+            { "type": "value", "options": { "2": { "text": "DOWN", "color": "red" } } },
+            { "type": "value", "options": { "3": { "text": "TESTING", "color": "yellow" } } }
+          ],
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showValue": "auto",
+        "mergeValues": true,
+        "alignValue": "center",
+        "rowHeight": 0.75,
+        "legend": { "displayMode": "hidden" },
+        "tooltip": { "mode": "single" }
+      }
+    },
+    {
+      "id": 300,
+      "title": "Throughput",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 17 },
+      "collapsed": false
+    },
+    {
+      "id": 9,
+      "title": "Top 10 — ingress bandwidth",
+      "type": "timeseries",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 18 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, rate(ifHCInOctets{instance=~\"$switch\", job=\"snmp\", ifDescr=~\"(Fast|Gigabit)Ethernet.*\"}[5m]) * 8)",
+          "legendFormat": "{{ instance }} {{ ifDescr }}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 15,
+            "gradientMode": "scheme",
+            "spanNulls": false,
+            "showPoints": "never",
+            "axisBorderShow": false,
+            "scaleDistribution": { "type": "linear" }
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+      }
+    },
+    {
+      "id": 10,
+      "title": "Top 10 — egress bandwidth",
+      "type": "timeseries",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 18 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, rate(ifHCOutOctets{instance=~\"$switch\", job=\"snmp\", ifDescr=~\"(Fast|Gigabit)Ethernet.*\"}[5m]) * 8)",
+          "legendFormat": "{{ instance }} {{ ifDescr }}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 15,
+            "gradientMode": "scheme",
+            "spanNulls": false,
+            "showPoints": "never",
+            "axisBorderShow": false,
+            "scaleDistribution": { "type": "linear" }
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Port utilization % (active ports)",
+      "type": "bargauge",
+      "gridPos": { "h": 12, "w": 12, "x": 0, "y": 28 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(rate(ifHCInOctets{instance=~\"$switch\", job=\"snmp\", ifDescr=~\"(Fast|Gigabit)Ethernet.*\"}[5m]) * 8 + rate(ifHCOutOctets{instance=~\"$switch\", job=\"snmp\", ifDescr=~\"(Fast|Gigabit)Ethernet.*\"}[5m]) * 8) / (ifHighSpeed{instance=~\"$switch\", job=\"snmp\", ifDescr=~\"(Fast|Gigabit)Ethernet.*\"} * 1e6 * 2) * 100 > 0",
+          "legendFormat": "{{ instance }} {{ ifDescr }}",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "orange", "value": 75 },
+              { "color": "red", "value": 90 }
+            ]
+          },
+          "color": { "mode": "thresholds" },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showUnfilled": true,
+        "valueMode": "text",
+        "namePlacement": "auto"
+      }
+    },
+    {
+      "id": 12,
+      "title": "Broadcast / multicast packets (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 12, "w": 12, "x": 12, "y": 28 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (instance) (rate(ifHCInBroadcastPkts{instance=~\"$switch\", job=\"snmp\"}[5m]))",
+          "legendFormat": "{{ instance }} broadcast IN"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (instance) (rate(ifHCInMulticastPkts{instance=~\"$switch\", job=\"snmp\"}[5m]))",
+          "legendFormat": "{{ instance }} multicast IN"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "pps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 15,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "showPoints": "never",
+            "axisBorderShow": false,
+            "stacking": { "mode": "none" },
+            "scaleDistribution": { "type": "linear" }
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+      }
+    },
+    {
+      "id": 400,
+      "title": "Errors & discards",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 40 },
+      "collapsed": false
+    },
+    {
+      "id": 13,
+      "title": "Interface errors (rate)",
+      "description": "Only interfaces with active errors are shown. Empty = clean network, no errors.",
+      "type": "timeseries",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 41 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(ifInErrors{instance=~\"$switch\", job=\"snmp\", ifDescr=~\"(Fast|Gigabit)Ethernet.*\"}[5m]) > 0",
+          "legendFormat": "{{ instance }} {{ ifDescr }} IN"
+        },
+        {
+          "refId": "B",
+          "expr": "rate(ifOutErrors{instance=~\"$switch\", job=\"snmp\", ifDescr=~\"(Fast|Gigabit)Ethernet.*\"}[5m]) > 0",
+          "legendFormat": "{{ instance }} {{ ifDescr }} OUT"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "err/s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 20,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "showPoints": "auto",
+            "axisBorderShow": false,
+            "scaleDistribution": { "type": "linear" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 0.1 }
+            ]
+          },
+          "color": { "mode": "palette-classic" },
+          "noValue": "No errors — all clean"
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+      }
+    },
+    {
+      "id": 14,
+      "title": "Interface discards (rate)",
+      "description": "Only interfaces with active discards are shown. Empty = clean network, no discards.",
+      "type": "timeseries",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 41 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(ifInDiscards{instance=~\"$switch\", job=\"snmp\", ifDescr=~\"(Fast|Gigabit)Ethernet.*\"}[5m]) > 0",
+          "legendFormat": "{{ instance }} {{ ifDescr }} IN"
+        },
+        {
+          "refId": "B",
+          "expr": "rate(ifOutDiscards{instance=~\"$switch\", job=\"snmp\", ifDescr=~\"(Fast|Gigabit)Ethernet.*\"}[5m]) > 0",
+          "legendFormat": "{{ instance }} {{ ifDescr }} OUT"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "drops/s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 20,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "showPoints": "auto",
+            "axisBorderShow": false,
+            "scaleDistribution": { "type": "linear" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 0.1 }
+            ]
+          },
+          "color": { "mode": "palette-classic" },
+          "noValue": "No discards — all clean"
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+      }
+    },
+    {
+      "id": 500,
+      "title": "Port inventory",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 51 },
+      "collapsed": false
+    },
+    {
+      "id": 15,
+      "title": "All ports — status, speed, traffic, errors",
+      "type": "table",
+      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 52 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "status",
+          "expr": "ifOperStatus{instance=~\"$switch\", job=\"snmp\", ifDescr=~\"(Fast|Gigabit)Ethernet.*\"}",
+          "legendFormat": "",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "speed",
+          "expr": "ifHighSpeed{instance=~\"$switch\", job=\"snmp\", ifDescr=~\"(Fast|Gigabit)Ethernet.*\"}",
+          "legendFormat": "",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "in_bps",
+          "expr": "rate(ifHCInOctets{instance=~\"$switch\", job=\"snmp\", ifDescr=~\"(Fast|Gigabit)Ethernet.*\"}[5m]) * 8",
+          "legendFormat": "",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "out_bps",
+          "expr": "rate(ifHCOutOctets{instance=~\"$switch\", job=\"snmp\", ifDescr=~\"(Fast|Gigabit)Ethernet.*\"}[5m]) * 8",
+          "legendFormat": "",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "errors",
+          "expr": "increase(ifInErrors{instance=~\"$switch\", job=\"snmp\", ifDescr=~\"(Fast|Gigabit)Ethernet.*\"}[1h]) + increase(ifOutErrors{instance=~\"$switch\", job=\"snmp\", ifDescr=~\"(Fast|Gigabit)Ethernet.*\"}[1h])",
+          "legendFormat": "",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": { "byField": "ifDescr", "mode": "outer" }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Time 1": true,
+              "Time 2": true,
+              "Time 3": true,
+              "Time 4": true,
+              "Time 5": true,
+              "__name__": true,
+              "__name__ 1": true,
+              "__name__ 2": true,
+              "__name__ 3": true,
+              "__name__ 4": true,
+              "ifIndex": true,
+              "ifIndex 1": true,
+              "ifIndex 2": true,
+              "ifIndex 3": true,
+              "ifIndex 4": true,
+              "ifName": true,
+              "ifName 1": true,
+              "ifName 2": true,
+              "ifName 3": true,
+              "ifName 4": true,
+              "job": true,
+              "job 1": true,
+              "job 2": true,
+              "job 3": true,
+              "job 4": true,
+              "instance 2": true,
+              "instance 3": true,
+              "instance 4": true,
+              "instance 5": true
+            },
+            "renameByName": {
+              "instance 1": "Switch",
+              "ifDescr": "Port",
+              "Value #status": "Status",
+              "Value #speed": "Speed (Mbps)",
+              "Value #in_bps": "IN (bps)",
+              "Value #out_bps": "OUT (bps)",
+              "Value #errors": "Errors (1h)"
+            },
+            "indexByName": {
+              "instance 1": 0,
+              "ifDescr": 1,
+              "Value #status": 2,
+              "Value #speed": 3,
+              "Value #in_bps": 4,
+              "Value #out_bps": 5,
+              "Value #errors": 6
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Status" },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "1": { "text": "UP", "color": "green" } } },
+                  { "type": "value", "options": { "2": { "text": "DOWN", "color": "red" } } }
+                ]
+              },
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "IN (bps)" },
+            "properties": [
+              { "id": "unit", "value": "bps" },
+              { "id": "decimals", "value": 0 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "OUT (bps)" },
+            "properties": [
+              { "id": "unit", "value": "bps" },
+              { "id": "decimals", "value": 0 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Errors (1h)" },
+            "properties": [
+              { "id": "decimals", "value": 0 },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "green", "value": null },
+                    { "color": "red", "value": 1 }
+                  ]
+                }
+              },
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Switch" },
+            "properties": [
+              { "id": "custom.width", "value": 180 }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [{ "displayName": "Switch", "desc": false }],
+        "footer": { "show": false }
+      }
+    },
+    {
+      "id": 600,
+      "title": "Spanning Tree (STP/PVST+)",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 66 },
+      "collapsed": false
+    },
+    {
+      "id": 16,
+      "title": "STP type",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 0, "y": 67 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "stpxSpanningTreeType{instance=~\"$switch\"}",
+          "legendFormat": "{{ instance }}",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "PVST+" }, "2": { "text": "MISTP" }, "3": { "text": "MISTP-PVST+" }, "4": { "text": "MST" }, "5": { "text": "Rapid PVST+" } } }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "graphMode": "none",
+        "colorMode": "value",
+        "justifyMode": "center",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 17,
+      "title": "Topology changes (VLAN 240)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 4, "y": 67 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "increase(dot1dStpTopChanges{instance=~\"$switch\"}[5m])",
+          "legendFormat": "{{ instance }}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "showPoints": "never",
+            "axisBorderShow": false,
+            "stacking": { "mode": "normal" },
+            "scaleDistribution": { "type": "linear" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 18,
+      "title": "Root port (VLAN 240)",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 12, "y": 67 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "dot1dStpRootPort{instance=~\"$switch\"}",
+          "legendFormat": "{{ instance }}",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "ROOT BRIDGE", "color": "green" } } }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue", "value": null }
+            ]
+          },
+          "color": { "mode": "thresholds" },
+          "noValue": "N/A"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "graphMode": "none",
+        "colorMode": "background_solid",
+        "justifyMode": "center",
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 19,
+      "title": "STP port state (VLAN 240)",
+      "type": "state-timeline",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 67 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "dot1dStpPortState{instance=~\"$switch\"}",
+          "legendFormat": "{{ instance }} port {{ dot1dStpPort }}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "DISABLED", "color": "dark-gray" } } },
+            { "type": "value", "options": { "2": { "text": "BLOCKING", "color": "red" } } },
+            { "type": "value", "options": { "3": { "text": "LISTENING", "color": "orange" } } },
+            { "type": "value", "options": { "4": { "text": "LEARNING", "color": "yellow" } } },
+            { "type": "value", "options": { "5": { "text": "FORWARDING", "color": "green" } } },
+            { "type": "value", "options": { "6": { "text": "BROKEN", "color": "dark-red" } } }
+          ],
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showValue": "auto",
+        "mergeValues": true,
+        "alignValue": "center",
+        "rowHeight": 0.8,
+        "legend": { "displayMode": "hidden" },
+        "tooltip": { "mode": "single" }
+      }
+    },
+    {
+      "id": 20,
+      "title": "Loop inconsistencies",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 75 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "increase(stpxLoopInconsistencyIndex{instance=~\"$switch\"}[5m])",
+          "legendFormat": "{{ instance }} loop"
+        },
+        {
+          "refId": "B",
+          "expr": "increase(stpxRootInconsistencyIndex{instance=~\"$switch\"}[5m])",
+          "legendFormat": "{{ instance }} root"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "showPoints": "never",
+            "axisBorderShow": false,
+            "scaleDistribution": { "type": "linear" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 21,
+      "title": "BPDU guard violations",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 75 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "increase(stpxBpduGuardViolationCounter{instance=~\"$switch\"}[5m])",
+          "legendFormat": "{{ instance }}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "showPoints": "never",
+            "axisBorderShow": false,
+            "scaleDistribution": { "type": "linear" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "color": { "mode": "fixed", "fixedColor": "dark-red" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 22,
+      "title": "Loop guard mode",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 16, "y": 75 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "stpxLoopGuardGlobalDefaultMode{instance=~\"$switch\"}",
+          "legendFormat": "{{ instance }}",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "ENABLED", "color": "green" } } },
+            { "type": "value", "options": { "2": { "text": "DISABLED", "color": "red" } } }
+          ],
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "graphMode": "none",
+        "colorMode": "background_solid",
+        "justifyMode": "center",
+        "textMode": "value_and_name"
+      }
+    }
+  ],
+  "annotations": { "list": [] },
+  "links": [
+    { "title": "← Infra Overview", "type": "link", "icon": "dashboard", "url": "/d/infra-overview", "tooltip": "Back to NOC overview" },
+    { "title": "Hosts — Linux", "type": "link", "icon": "dashboard", "url": "/d/hosts-linux", "tooltip": "Node exporter drill-down" },
+    { "title": "Proxmox — VMs", "type": "link", "icon": "dashboard", "url": "/d/proxmox-vms", "tooltip": "Proxmox cluster & VMs" }
+  ]
+}

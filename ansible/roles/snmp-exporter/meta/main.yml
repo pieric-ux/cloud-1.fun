@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  author: pieric
+  description: Prometheus SNMP exporter for the switches, pfSense and the NAS
+  license: MIT
+  min_ansible_version: "2.17"
+dependencies: []

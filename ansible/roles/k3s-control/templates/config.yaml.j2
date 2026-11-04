@@ -1,0 +1,8 @@
+{{ ansible_managed | comment }}
+tls-san:
+  - "{{ k3s_api_endpoint }}"
+# Flannel does not enforce NetworkPolicies: Calico replaces it.
+flannel-backend: none
+disable-network-policy: true
+cluster-cidr: "{{ k3s_cluster_cidr }}"
+write-kubeconfig-mode: "0600"

@@ -1,0 +1,20 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Prometheus SNMP Exporter
+Documentation=https://github.com/prometheus/snmp_exporter
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User={{ snmp_exporter_user }}
+Group={{ snmp_exporter_user }}
+ExecStart={{ snmp_exporter_binary }} --config.file={{ snmp_exporter_config }} --web.listen-address={{ snmp_exporter_listen_address }}:{{ snmp_exporter_port }}
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

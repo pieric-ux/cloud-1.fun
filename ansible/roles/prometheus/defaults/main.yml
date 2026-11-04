@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: MIT-0
+---
+# Official release from https://github.com/prometheus/prometheus/releases.
+# code: language=ansible
+prometheus_version: "3.15.1"
+prometheus_checksum: "sha256:6a726885328ad9efebbf36e876ce2fb6225468a71fd1e7ce3ba666d5f4d97a84"
+
+prometheus_user: prometheus
+prometheus_binary: /usr/local/bin/prometheus
+prometheus_promtool: /usr/local/bin/promtool
+prometheus_cache_dir: /var/cache/prometheus
+prometheus_config_dir: /etc/prometheus
+prometheus_data_dir: /var/lib/prometheus
+
+# Single-homed VM on the management VLAN: listen on all interfaces so Grafana
+# reaches it by name and the self-scrape reaches 127.0.0.1.
+prometheus_listen_address: "0.0.0.0"
+prometheus_port: 9090
+alertmanager_port: 9093
+node_exporter_port: 9100
+
+prometheus_retention_time: "15d"
+prometheus_retention_size: "5GB"
+
+# Scrape targets derived from inventory groups.  Templates use
+# hostvars[host].ansible_host to resolve the FQDN for each short name.
+prometheus_node_hosts: "{{ groups['linux'] | sort }}"
+
+# Proxmox nodes scraped through the local pve-exporter (127.0.0.1:9221).
+# Only pve01/pve02, not pbs (it runs Proxmox Backup, not PVE).
+prometheus_pve_targets:
+  - pve01
+  - pve02
+
+# pfSense node_exporter (installed via pfSense Package Manager).
+prometheus_pfsense_target: pfsense01.cloud-1.fun
+
+# Switches + NAS scraped through the local snmp_exporter (127.0.0.1:9116).
+prometheus_snmp_targets:
+  - l3sw.cloud-1.fun
+  - l2sw.cloud-1.fun
+  - nas01.cloud-1.fun
+# STP state of the Cisco switches (modules added to snmp.yml by snmp-exporter).
+prometheus_stp_targets:
+  - l3sw.cloud-1.fun
+  - l2sw.cloud-1.fun
+prometheus_stp_jobs:
+  - {name: snmp_cisco_stp, auth: rack_v2, module: cisco_stp}
+  - {name: snmp_bridge_stp, auth: rack_v2_vlan240, module: bridge_stp}

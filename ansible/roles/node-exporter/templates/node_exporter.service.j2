@@ -1,0 +1,22 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Prometheus Node Exporter
+Documentation=https://github.com/prometheus/node_exporter
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User={{ node_exporter_user }}
+Group={{ node_exporter_user }}
+ExecStart={{ node_exporter_binary }} --web.listen-address={{ node_exporter_listen_address }}:{{ node_exporter_port }}
+# The bind fails if the address is not up yet at boot: systemd retries.
+Restart=on-failure
+RestartSec=5s
+# Read-only exporter: no privilege gain, file system read-only for the process.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: MIT-0
+---
+# net-snmp trap receiver. Logs v2c traps from the switches/NAS to the journal.
+# code: language=ansible
+# Same v2c community as the snmp-exporter; supplied via --extra-vars / Vault, never committed.
+snmptrapd_community: ""
+snmptrapd_listen: "udp:162"

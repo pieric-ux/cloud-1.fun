@@ -1,0 +1,6 @@
+# {{ ansible_managed }}
+default:
+  user: {{ pve_exporter_pve_user }}
+  token_name: {{ pve_exporter_token_name }}
+  token_value: {{ pve_exporter_token }}
+  verify_ssl: {{ pve_exporter_verify_ssl | lower }}

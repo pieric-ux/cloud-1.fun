@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: MIT-0
+---
+- name: The SNMP community must be provided
+  ansible.builtin.assert:
+    that: snmptrapd_community | length > 0
+    fail_msg: "snmptrapd_community is empty: pass it with --extra-vars or Ansible Vault."
+
+- name: Net-SNMP trap daemon
+  ansible.builtin.apt:
+    name: snmptrapd
+    state: present
+    update_cache: true
+
+- name: Trap daemon configuration (accept + log v2c traps from our community)
+  ansible.builtin.template:
+    src: snmptrapd.conf.j2
+    dest: /etc/snmp/snmptrapd.conf
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  notify: Restart snmptrapd
+
+- name: Systemd unit (explicit UDP 162 listen, logs to the journal)
+  ansible.builtin.template:
+    src: snmptrapd.service.j2
+    dest: /etc/systemd/system/snmptrapd.service
+    owner: root
+    group: root
+    mode: "0644"
+  register: snmptrapd_unit
+  notify: Restart snmptrapd
+
+- name: Enabled at boot and running
+  ansible.builtin.systemd_service:
+    name: snmptrapd
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: not (ansible_check_mode and snmptrapd_unit is changed)
+
+- name: Apply a pending restart before the check
+  ansible.builtin.meta: flush_handlers
+
+- name: Check that snmptrapd listens on UDP 162
+  ansible.builtin.command: ss -lnu
+  register: snmptrapd_ss
+  changed_when: false
+  failed_when: "':162' not in snmptrapd_ss.stdout"
+  when: not ansible_check_mode

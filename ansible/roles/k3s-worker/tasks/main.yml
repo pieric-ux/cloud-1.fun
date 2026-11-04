@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: MIT-0
+---
+# tasks file for k3s-worker
+
+- name: Get the join token from the control plane
+  ansible.builtin.import_tasks: fetch.yml
+
+- name: Check k3s prerequisites
+  ansible.builtin.import_tasks: prereq.yml
+
+- name: Install k3s agent and join the cluster
+  ansible.builtin.import_tasks: install.yml

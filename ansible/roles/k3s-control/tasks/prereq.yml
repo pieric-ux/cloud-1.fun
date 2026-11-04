@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: MIT-0
+---
+# tasks file for k3s prerequisites
+# Without a pinned version the script installs "stable", and without a token
+# k3s generates one that the workers cannot know.
+- name: Check that k3s variables are defined
+  ansible.builtin.assert:
+    that:
+      - k3s_version | length > 0
+      - k3s_token | length > 0
+    fail_msg: k3s_version or k3s_token is empty, set them in inventory/group_vars/k3s/
+  no_log: true

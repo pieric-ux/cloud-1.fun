@@ -1,0 +1,92 @@
+# {{ ansible_managed }}
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - {{ prometheus_config_dir }}/rules/alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - '127.0.0.1:{{ alertmanager_port }}'
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ['127.0.0.1:{{ prometheus_port }}']
+
+  - job_name: alertmanager
+    static_configs:
+      - targets: ['127.0.0.1:{{ alertmanager_port }}']
+
+  - job_name: node
+    static_configs:
+      - targets:
+{% for host in prometheus_node_hosts %}
+          - '{{ hostvars[host]["prometheus_node_target"] | default(hostvars[host]["ansible_host"]) }}:{{ node_exporter_port }}'
+{% endfor %}
+
+  - job_name: pve
+    metrics_path: /pve
+    params:
+      module: [default]
+      cluster: ['1']
+      node: ['1']
+    static_configs:
+      - targets:
+{% for host in prometheus_pve_targets %}
+          - '{{ hostvars[host]["ansible_host"] }}'
+{% endfor %}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: '127.0.0.1:9221'
+
+  - job_name: snmp
+    metrics_path: /snmp
+    params:
+      auth: [rack_v2]
+      module: [if_mib]
+    static_configs:
+      - targets:
+{% for host in prometheus_snmp_targets %}
+          - '{{ host }}'
+{% endfor %}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: '127.0.0.1:9116'
+{% for job in prometheus_stp_jobs %}
+
+  - job_name: {{ job.name }}
+    metrics_path: /snmp
+    scrape_interval: 30s
+    params:
+      auth: [{{ job.auth }}]
+      module: [{{ job.module }}]
+    static_configs:
+      - targets:
+{% for host in prometheus_stp_targets %}
+          - '{{ host }}'
+{% endfor %}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: '127.0.0.1:9116'
+{% endfor %}
+
+  - job_name: pfsense
+    static_configs:
+      - targets:
+          - '{{ prometheus_pfsense_target }}:{{ node_exporter_port }}'

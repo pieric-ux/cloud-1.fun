@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: MIT-0
+---
+# tasks file for k3s prerequisites
+- name: Check that k3s variables are defined
+  ansible.builtin.assert:
+    that:
+      - k3s_version | length > 0
+      - k3s_node_token | length > 0
+      - k3s_api_endpoint | length > 0
+    fail_msg: k3s_version, k3s_api_endpoint or the join token is empty, check inventory/group_vars/k3s/
+  no_log: true
+
+# Fails early with a clear message if DNS or the network to the API is broken.
+- name: Wait for the control-plane API to be reachable
+  ansible.builtin.wait_for:
+    host: "{{ k3s_api_endpoint }}"
+    port: 6443
+    timeout: 30

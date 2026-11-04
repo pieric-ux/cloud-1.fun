@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: MIT-0
+---
+# Prometheus datasource provisioned into Grafana (subject: "pre-configured").
+grafana_prometheus_url: "http://prometheus01.cloud-1.fun:9090"
+
+# Admin password: set via Ansible Vault / --extra-vars before final validation.
+# Empty -> Grafana keeps its first-boot admin/admin (change forced at first login).
+grafana_admin_password: ""

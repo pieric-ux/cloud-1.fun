@@ -144,3 +144,5 @@ ansible.log
 /key/
 # Python bytecode (role filter plugins)
 __pycache__/
+# k3s admin kubeconfig written by the k3s-control role (cluster-admin access)
+ansible/files/k3s.yaml

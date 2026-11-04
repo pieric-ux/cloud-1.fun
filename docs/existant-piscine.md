@@ -83,22 +83,24 @@ Ubuntu : plugin `hashicorp/proxmox`, `proxmox-iso`, node pve01, VMID 8004,
 ⚠️ `cpu_type = "host"` dans ce fichier, alors que les templates d'équipe
 utilisent le modèle Haswell (migration) : à aligner.
 
-## Supervision (→ couche 30)
+## Supervision (→ couche 30) : reprise le 2026-11-04
 
-Source : `infra06/ansible/` (rôles `node-exporter`, `prometheus`,
-`alertmanager`, `grafana`, `pve-exporter`, `snmp-exporter`), `site.yml`,
-`grafana/dashboard.json`, doc `infra06/docs/module06/`.
-`site.yml` : node-exporter sur tous les Linux (Proxmox, VMs d'infra,
-qdevice, supervision), Prometheus + Alertmanager + pve-exporter sur
-`prometheus01`, Grafana sur `grafana01`. Prometheus scrape par nom d'hôte
-(via dhcp-dns). L'inventaire infra06 utilise des FQDN comme noms d'hôtes :
-à fusionner dans notre inventaire (noms courts + `ansible_host`).
+Rôles d'infra06 dans `ansible/roles/` (`node-exporter`, `prometheus`,
+`alertmanager`, `pve-exporter`, `snmp-exporter`, `snmptrapd`, `grafana`),
+plays dans `30-config.yml`, tableaux de bord dans
+`ansible/files/grafana-dashboards/` (import manuel). La config en service
+avait été retouchée à la main (jobs et modules SNMP du STP, auth
+`rack_v2_vlan240` = communauté + `@240`) : les rôles ont été alignés dessus,
+`--check` sans écart. Secrets dans `group_vars/monitoring/vault.yml`.
+Alertmanager n'envoie encore aucune notification (récepteur `null`).
 
-## Kubernetes (→ plus tard)
+## Kubernetes (→ couche 30) : reprise le 2026-11-04
 
-`infra05/` : rôles `k3s-control` / `k3s-worker` (vides dans ce relevé),
-manifests `infra05/k8s/module05/` (nginx, ingress, network policies,
-postgres). Inventaire : `prod` → `k3s_control`, `k3s_worker`.
+Rôles `k3s-control` / `k3s-worker` d'infra05 (k3s `v1.31.4+k3s1`, Calico à
+la place de Flannel pour les NetworkPolicies), plays dans `30-config.yml`,
+jeton du cluster dans `group_vars/k3s/vault.yml`. Script d'installation figé
+sur la release (au lieu de `get.k3s.io`). Manifests (`infra05/k8s/module05/`:
+nginx + ingress, network policies, Postgres) pas encore repris.
 
 ## Sauvegardes hors site (→ restauration après rebuild)
 

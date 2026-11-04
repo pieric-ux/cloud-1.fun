@@ -39,6 +39,11 @@ all:
               ansible_host: grafana01.cloud-1.fun
             prometheus:
               ansible_host: prometheus01.cloud-1.fun
+        # Raspberry Pi 4B, corosync QDevice of the cluster (third vote).
+        infra_pi:
+          hosts:
+            qdevice03:
+              ansible_host: qdevice03.cloud-1.fun
         cyber:
           hosts:
             c2-hak5:

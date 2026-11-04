@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: MIT-0
+---
+# Official release from https://github.com/prometheus/snmp_exporter/releases.
+# code: language=ansible
+snmp_exporter_version: "0.31.0"
+snmp_exporter_checksum: "sha256:264d1b3be8dd1133fcbd11cbb81ab2a65f121237ab2fff198adb1cc6961ed3ae"
+
+snmp_exporter_user: snmp_exporter
+snmp_exporter_binary: /usr/local/bin/snmp_exporter
+snmp_exporter_cache_dir: /var/cache/snmp_exporter
+snmp_exporter_config_dir: /etc/snmp_exporter
+snmp_exporter_config: /etc/snmp_exporter/snmp.yml
+
+snmp_exporter_listen_address: "127.0.0.1"
+snmp_exporter_port: 9116
+
+# v2c auth. Community supplied with --extra-vars / Ansible Vault, never committed.
+snmp_exporter_auth_name: rack_v2
+# Extra v2c auths: same community with a suffix. Cisco serves the BRIDGE-MIB
+# of one VLAN under "<community>@<vlan>" (STP of VLAN 240, job snmp_bridge_stp).
+snmp_exporter_extra_auths:
+  - {name: rack_v2_vlan240, community_suffix: "@240"}
+snmp_exporter_community: ""

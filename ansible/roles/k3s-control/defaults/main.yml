@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: MIT-0
+---
+# defaults file for k3s-control
+# Site values live in inventory/group_vars/k3s/vars.yml (token: k3s/vault.yml).
+
+# Pinned release, passed to the install script as INSTALL_K3S_VERSION.
+k3s_version: ""
+
+# Address added to the API server certificate (--tls-san): the one workers and
+# kubectl use to reach port 6443.
+k3s_api_endpoint: "{{ ansible_host }}"
+
+# Shared secret used by the workers to join the cluster.
+k3s_token: ""
+
+k3s_install_script: /usr/local/bin/k3s-install.sh
+# Install script of the pinned release, not get.k3s.io (which changes
+# upstream): the same script for every node and every rebuild.
+k3s_install_script_url: "https://raw.githubusercontent.com/k3s-io/k3s/{{ k3s_version | urlencode }}/install.sh"
+
+# Pod network. Must match the Calico IP pool (calico.yaml default).
+k3s_cluster_cidr: "192.168.0.0/16"
+
+k3s_calico_manifest_url: https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/manifests/calico.yaml
+
+# Admin kubeconfig written on the controller (gitignored).
+k3s_kubeconfig_local_path: "{{ playbook_dir }}/files/k3s.yaml"

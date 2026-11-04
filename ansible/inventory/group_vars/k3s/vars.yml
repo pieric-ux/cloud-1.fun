@@ -1,0 +1,8 @@
+---
+# k3s cluster (roles k3s-control / k3s-worker, from infra05): version running
+# on 2026-11-04. The install script only runs on a fresh node: changing the
+# version here does not upgrade the cluster.
+k3s_version: v1.31.4+k3s1
+# Token the control plane was installed with (vault.yml): a reinstalled
+# control plane must get it back.
+k3s_token: "{{ vault_k3s_token }}"

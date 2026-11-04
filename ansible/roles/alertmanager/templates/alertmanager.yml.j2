@@ -1,0 +1,12 @@
+# {{ ansible_managed }}
+# Receiver "null" drops notifications for now. The Discord/SMTP receivers are
+# added at the alerting step (module 06) from secrets held in Ansible Vault.
+route:
+  receiver: 'null'
+  group_by: ['alertname', 'instance']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 3h
+
+receivers:
+  - name: 'null'

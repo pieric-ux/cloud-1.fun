@@ -1,0 +1,69 @@
+---
+# tasks file for the k3s server and its CNI (Calico)
+- name: Download k3s install script
+  ansible.builtin.get_url:
+    url: "{{ k3s_install_script_url }}"
+    dest: "{{ k3s_install_script }}"
+    owner: root
+    group: root
+    mode: "0755"
+
+# Server flags live in config.yaml rather than INSTALL_K3S_EXEC, so changing
+# them later is applied by a restart instead of being skipped by creates:.
+- name: Create k3s config directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy k3s server config
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /etc/rancher/k3s/config.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart k3s
+
+# creates: the script only runs on the first install. Changing k3s_version
+# afterwards does not upgrade the node.
+- name: Run k3s install script (server)
+  ansible.builtin.command:
+    cmd: "{{ k3s_install_script }}"
+    creates: /usr/local/bin/k3s
+  environment:
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
+    K3S_TOKEN: "{{ k3s_token }}"
+    INSTALL_K3S_EXEC: server
+  no_log: true
+
+- name: Enable and start k3s
+  ansible.builtin.service:
+    name: k3s
+    enabled: true
+    state: started
+
+- name: Apply pending k3s restart
+  ansible.builtin.meta: flush_handlers
+
+# The API server needs a few seconds after the service starts.
+- name: Install Calico
+  ansible.builtin.command:
+    cmd: /usr/local/bin/k3s kubectl apply -f {{ k3s_calico_manifest_url }}
+  register: k3s_calico_apply
+  until: k3s_calico_apply.rc == 0
+  retries: 12
+  delay: 10
+  changed_when: k3s_calico_apply.stdout is search('created|configured')
+
+# Without Flannel the node stays NotReady until Calico runs on it.
+- name: Wait for the control-plane node to be Ready
+  ansible.builtin.command:
+    cmd: /usr/local/bin/k3s kubectl wait --for=condition=Ready node/{{ ansible_nodename }} --timeout=10s
+  register: k3s_node_ready
+  until: k3s_node_ready.rc == 0
+  retries: 30
+  delay: 10
+  changed_when: false

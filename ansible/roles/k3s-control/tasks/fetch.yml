@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: MIT-0
+---
+# tasks file to export the cluster data: join token and admin kubeconfig
+- name: Read node token
+  ansible.builtin.slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  register: k3s_node_token_raw
+  no_log: true
+
+# Read by k3s-worker through hostvars[groups['k3s_control'][0]].k3s_node_token
+- name: Store node token as a fact for the workers
+  ansible.builtin.set_fact:
+    k3s_node_token: "{{ k3s_node_token_raw.content | b64decode | trim }}"
+  no_log: true
+
+- name: Read admin kubeconfig
+  ansible.builtin.slurp:
+    src: /etc/rancher/k3s/k3s.yaml
+  register: k3s_kubeconfig_raw
+  no_log: true
+
+- name: Create local files directory
+  ansible.builtin.file:
+    path: "{{ k3s_kubeconfig_local_path | dirname }}"
+    state: directory
+    mode: "0755"
+  delegate_to: localhost
+  become: false
+
+- name: Save kubeconfig with the control-plane address
+  ansible.builtin.copy:
+    content: "{{ k3s_kubeconfig_raw.content | b64decode | replace('https://127.0.0.1:6443', 'https://' ~ k3s_api_endpoint ~ ':6443') }}"
+    dest: "{{ k3s_kubeconfig_local_path }}"
+    mode: "0600"
+  delegate_to: localhost
+  become: false
+  no_log: true

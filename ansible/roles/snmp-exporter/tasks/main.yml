@@ -1,0 +1,134 @@
+# SPDX-License-Identifier: MIT-0
+---
+- name: The SNMP community must be provided
+  ansible.builtin.assert:
+    that: snmp_exporter_community | length > 0
+    fail_msg: "snmp_exporter_community is empty: pass it with --extra-vars or Ansible Vault."
+
+- name: Dedicated system group
+  ansible.builtin.group:
+    name: "{{ snmp_exporter_user }}"
+    system: true
+
+- name: Dedicated system user, no shell, no home
+  ansible.builtin.user:
+    name: "{{ snmp_exporter_user }}"
+    group: "{{ snmp_exporter_user }}"
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+
+- name: Directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ snmp_exporter_cache_dir }}"
+    - "{{ snmp_exporter_config_dir }}"
+  check_mode: false
+
+- name: Download the official release, checksum verified
+  ansible.builtin.get_url:
+    url: "https://github.com/prometheus/snmp_exporter/releases/download/v{{ snmp_exporter_version }}/snmp_exporter-{{ snmp_exporter_version }}.linux-amd64.tar.gz"
+    dest: "{{ snmp_exporter_cache_dir }}/snmp_exporter-{{ snmp_exporter_version }}.linux-amd64.tar.gz"
+    checksum: "{{ snmp_exporter_checksum }}"
+    owner: root
+    group: root
+    mode: "0644"
+  check_mode: false
+
+- name: Extract the release
+  ansible.builtin.unarchive:
+    src: "{{ snmp_exporter_cache_dir }}/snmp_exporter-{{ snmp_exporter_version }}.linux-amd64.tar.gz"
+    dest: "{{ snmp_exporter_cache_dir }}"
+    remote_src: true
+    owner: root
+    group: root
+    creates: "{{ snmp_exporter_cache_dir }}/snmp_exporter-{{ snmp_exporter_version }}.linux-amd64/snmp_exporter"
+  check_mode: false
+
+- name: Install the binary
+  ansible.builtin.copy:
+    src: "{{ snmp_exporter_cache_dir }}/snmp_exporter-{{ snmp_exporter_version }}.linux-amd64/snmp_exporter"
+    dest: "{{ snmp_exporter_binary }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Restart snmp-exporter
+
+- name: Official generated snmp.yml (modules, pinned to the exporter version)
+  ansible.builtin.get_url:
+    url: "https://raw.githubusercontent.com/prometheus/snmp_exporter/v{{ snmp_exporter_version }}/snmp.yml"
+    dest: "{{ snmp_exporter_cache_dir }}/snmp.yml.official"
+    owner: root
+    group: root
+    mode: "0644"
+  check_mode: false
+
+- name: Modules added to the official ones (STP)
+  ansible.builtin.copy:
+    src: stp-modules.yml
+    dest: "{{ snmp_exporter_cache_dir }}/stp-modules.yml"
+    mode: "0644"
+
+- name: Assemble snmp.yml (our v2c auths + official modules + STP modules)
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      umask 027
+      {
+        printf 'auths:\n  %s:\n    community: %s\n    version: 2\n' '{{ snmp_exporter_auth_name }}' '{{ snmp_exporter_community }}'
+        {% for auth in snmp_exporter_extra_auths %}
+        printf '  %s:\n    community: %s\n    version: 2\n' '{{ auth.name }}' '{{ snmp_exporter_community }}{{ auth.community_suffix }}'
+        {% endfor %}
+        sed -n '/^modules:/,$p' '{{ snmp_exporter_cache_dir }}/snmp.yml.official'
+        grep -v '^#' '{{ snmp_exporter_cache_dir }}/stp-modules.yml' | sed 's/^/  /'
+      } > '{{ snmp_exporter_config }}.new'
+      chown root:{{ snmp_exporter_user }} '{{ snmp_exporter_config }}.new'
+      chmod 0640 '{{ snmp_exporter_config }}.new'
+      if cmp -s '{{ snmp_exporter_config }}.new' '{{ snmp_exporter_config }}' 2>/dev/null; then
+        rm -f '{{ snmp_exporter_config }}.new'
+      else
+        mv '{{ snmp_exporter_config }}.new' '{{ snmp_exporter_config }}'
+        echo CHANGED
+      fi
+    executable: /bin/bash
+  register: snmp_assemble
+  changed_when: "'CHANGED' in snmp_assemble.stdout"
+  no_log: true
+  notify: Restart snmp-exporter
+
+- name: Systemd unit
+  ansible.builtin.template:
+    src: snmp-exporter.service.j2
+    dest: /etc/systemd/system/snmp-exporter.service
+    owner: root
+    group: root
+    mode: "0644"
+  register: snmp_exporter_unit
+  notify: Restart snmp-exporter
+
+- name: Enabled at boot and running
+  ansible.builtin.systemd_service:
+    name: snmp-exporter
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: not (ansible_check_mode and snmp_exporter_unit is changed)
+
+- name: Apply a pending restart before the check
+  ansible.builtin.meta: flush_handlers
+
+- name: Check that the exporter is up
+  ansible.builtin.uri:
+    url: "http://{{ snmp_exporter_listen_address }}:{{ snmp_exporter_port }}/metrics"
+    return_content: false
+  register: snmp_exporter_metrics
+  until: snmp_exporter_metrics.status == 200
+  retries: 5
+  delay: 2
+  when: not ansible_check_mode

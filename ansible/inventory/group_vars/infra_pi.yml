@@ -1,0 +1,4 @@
+---
+# Raspberry Pi of the rack (qdevice03): reached over SSH with the automation
+# key, like the other Linux hosts.
+ansible_ssh_private_key_file: "{{ playbook_dir }}/../key/ansible"

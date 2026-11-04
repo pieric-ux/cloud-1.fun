@@ -1,0 +1,102 @@
+# SPDX-License-Identifier: MIT-0
+---
+- name: Dedicated system group
+  ansible.builtin.group:
+    name: "{{ alertmanager_user }}"
+    system: true
+
+- name: Dedicated system user, no shell, no home
+  ansible.builtin.user:
+    name: "{{ alertmanager_user }}"
+    group: "{{ alertmanager_user }}"
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+
+- name: Directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.owner }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ alertmanager_cache_dir }}", owner: root, mode: "0755" }
+    - { path: "{{ alertmanager_config_dir }}", owner: root, mode: "0755" }
+    - { path: "{{ alertmanager_data_dir }}", owner: "{{ alertmanager_user }}", mode: "0750" }
+  check_mode: false
+
+- name: Download the official release, checksum verified
+  ansible.builtin.get_url:
+    url: "https://github.com/prometheus/alertmanager/releases/download/v{{ alertmanager_version }}/alertmanager-{{ alertmanager_version }}.linux-amd64.tar.gz"
+    dest: "{{ alertmanager_cache_dir }}/alertmanager-{{ alertmanager_version }}.linux-amd64.tar.gz"
+    checksum: "{{ alertmanager_checksum }}"
+    owner: root
+    group: root
+    mode: "0644"
+  check_mode: false
+
+- name: Extract the release
+  ansible.builtin.unarchive:
+    src: "{{ alertmanager_cache_dir }}/alertmanager-{{ alertmanager_version }}.linux-amd64.tar.gz"
+    dest: "{{ alertmanager_cache_dir }}"
+    remote_src: true
+    owner: root
+    group: root
+    creates: "{{ alertmanager_cache_dir }}/alertmanager-{{ alertmanager_version }}.linux-amd64/alertmanager"
+  check_mode: false
+
+- name: Install the binaries (also in check mode, so amtool can validate the config)
+  ansible.builtin.copy:
+    src: "{{ alertmanager_cache_dir }}/alertmanager-{{ alertmanager_version }}.linux-amd64/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - alertmanager
+    - amtool
+  check_mode: false
+  notify: Restart alertmanager
+
+- name: Configuration (validated by amtool)
+  ansible.builtin.template:
+    src: alertmanager.yml.j2
+    dest: "{{ alertmanager_config_dir }}/alertmanager.yml"
+    owner: root
+    group: "{{ alertmanager_user }}"
+    mode: "0640"
+    validate: "{{ alertmanager_amtool }} check-config %s"
+  notify: Restart alertmanager
+
+- name: Systemd unit
+  ansible.builtin.template:
+    src: alertmanager.service.j2
+    dest: /etc/systemd/system/alertmanager.service
+    owner: root
+    group: root
+    mode: "0644"
+  register: alertmanager_unit
+  notify: Restart alertmanager
+
+- name: Enabled at boot and running
+  ansible.builtin.systemd_service:
+    name: alertmanager
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: not (ansible_check_mode and alertmanager_unit is changed)
+
+- name: Apply a pending restart before the check
+  ansible.builtin.meta: flush_handlers
+
+- name: Check that Alertmanager is ready
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ alertmanager_port }}/-/ready"
+    status_code: 200
+  register: alertmanager_ready
+  until: alertmanager_ready.status == 200
+  retries: 10
+  delay: 3
+  when: not ansible_check_mode

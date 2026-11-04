@@ -1,0 +1,18 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Net-SNMP trap daemon (receive SNMP traps)
+Documentation=man:snmptrapd(8)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/snmptrapd -f -Lsd -On -c /etc/snmp/snmptrapd.conf {{ snmptrapd_listen }}
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
