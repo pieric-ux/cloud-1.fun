@@ -28,9 +28,9 @@ endef
 .DEFAULT_GOAL := help
 .PHONY: help preflight lint \
 	network network-check network-apply pfsense-backup \
-	bootstrap iso media-test serve-iso install pve-config-check pbs-config-check \
+	bootstrap iso media-test serve-iso install pve-config-check pve-config pbs-config-check pbs-config \
 	templates-check templates \
-	vms-tfvars vms-init vms-plan \
+	vms-tfvars vms-init vms-plan vms-apply \
 	config-check config
 
 help: ## List the targets
@@ -89,8 +89,16 @@ install: ## DESTRUCTIVE: reinstall Proxmox on one node (HOST=, CONFIRM=yes)
 pve-config-check: ## Preview the Proxmox node configuration (no change)
 	$(PLAYBOOK) 10-bootstrap.yml --tags pve-config --check --diff
 
+pve-config: ## Apply the Proxmox node configuration (CONFIRM=yes)
+	$(call need_confirm,the Proxmox nodes)
+	$(PLAYBOOK) 10-bootstrap.yml --tags pve-config -e pve_config_confirm=true
+
 pbs-config-check: ## Preview the Proxmox Backup Server configuration (no change)
 	$(PLAYBOOK) 10-bootstrap.yml --tags pbs-config --check --diff
+
+pbs-config: ## Apply the Proxmox Backup Server configuration (CONFIRM=yes)
+	$(call need_confirm,the Proxmox Backup Server)
+	$(PLAYBOOK) 10-bootstrap.yml --tags pbs-config -e pbs_config_confirm=true
 
 # --- 15 templates: Packer (local install: serves the answer files over HTTP
 # to the VM, on the address of this machine seen from VLAN 240) -------------
@@ -119,8 +127,12 @@ vms-tfvars: ## Write 20-proxmox/terraform.tfvars from the vault (token secret, n
 vms-init: ## Download the Terraform provider (local)
 	$(TERRAFORM) init
 
-vms-plan: ## List the cluster VMs, change nothing (needs 20-proxmox/terraform.tfvars)
+vms-plan: ## Preview the guests and HA (no change expected; needs make vms-tfvars)
 	$(TERRAFORM) plan
+
+vms-apply: ## Apply the guests and HA, after a reviewed plan (CONFIRM=yes)
+	$(call need_confirm,the guests and HA of the cluster)
+	$(TERRAFORM) apply
 
 # --- 30 config: OS configuration of the VMs ---------------------------------
 

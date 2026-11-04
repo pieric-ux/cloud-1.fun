@@ -21,7 +21,8 @@ fois la vérification OK. Chaque étape dit *quoi*, *pourquoi c'est manuel*,
 | 5 | iLO (IP + compte) | sauter si le probe iLO passe |
 | 6 | RAID P440 | sauter si la vérification RAID du probe passe |
 | 7 | ISO Proxmox | sauter si les ISO préparés existent |
-| 8 | Enchaînement automatisé | — |
+| 8 | Enchaînement automatisé (rebuild complet) | — |
+| 9 | Pannes partielles (un nœud, le PBS seul) | — |
 
 ---
 
@@ -40,9 +41,20 @@ fois la vérification OK. Chaque étape dit *quoi*, *pourquoi c'est manuel*,
 3. Secrets depuis Bitwarden :
    - mot de passe du vault → `~/.ansible/.vault_pass_cloud1`, droits `600` ;
    - clé SSH automation → `key/ansible` (`600`) et `key/ansible.pub`.
-4. Docker (OrbStack) démarré, Node.js / npx installé.
+4. Docker (OrbStack) démarré, Node.js / npx installé, Packer
+   (`brew install packer`) pour les templates. Terraform tourne dans Docker
+   (`make vms-*`), pas d'installation locale.
 5. Être sur le VLAN MGMT (`10.1.240.0/24`), ou sur le VPN une fois pfSense
-   restauré.
+   restauré. Sur le VLAN MGMT sans VPN, OrbStack a besoin de la permission
+   macOS **Réseau local** (Réglages Système > Confidentialité et sécurité),
+   sinon les conteneurs ne joignent pas les nœuds.
+6. HCP Terraform (état de la couche 20, organisation `cloud-1-fun`) : un
+   compte invité dans l'organisation et un jeton **utilisateur** (Account
+   settings > Tokens ; un jeton d'organisation ne peut pas lancer de plan) :
+   ```bash
+   docker run --rm -it -v $HOME/.terraform.d:/root/.terraform.d hashicorp/terraform:1.9.8 login
+   ```
+   L'état est chez HCP : il survit à la perte du rack et du poste.
 
 **Vérification**
 ```bash
@@ -210,35 +222,171 @@ curl -s -o /dev/null -w '%{http_code}\n' -r 0-1023 http://<ip-poste>:8080/pve01/
 
 ---
 
-## 8. Enchaînement automatisé
+## 8. Enchaînement automatisé (rebuild complet)
 
-Une fois le point zéro fait, dans l'ordre (depuis `ansible/`) :
-
-1. **Réseau** : `ansible-playbook 00-network.yml --tags apply,pfsense-apply --check --diff`,
-   puis sans `--check` avec `-e network_apply_confirm=true -e pfsense_apply_confirm=true`.
-2. **Stockage** (`05-storage`, à venir) : partage des ISO, iSCSI.
-3. **Bare metal**, un nœud à la fois, groupe prévenu. **Vider le nœud
-   d'abord** : les guests dont les disques sont sur son `local-lvm` sont
-   effacés avec lui (ex. la VM `pbs` sur pve02) →
-   `qm migrate <vmid> <autre nœud> --with-local-disks`, ou déplacer leurs
-   disques sur `synology-lvm`. L'installation s'arrête s'il en reste
-   (`-e pve_install_allow_local_guests=true` pour accepter leur perte).
-   `ansible-playbook 10-bootstrap.yml --tags install --limit pve02 -e pve_install_confirm=true`.
-4. **Configuration des Proxmox** (cluster, iSCSI `synology-lvm`) : à venir.
-5. **VMs** (`20-proxmox`, Terraform : squelette en lecture seule, import du
-   code depuis les VMs réelles à venir) puis **config** (`30-config.yml`).
-6. **Restauration des backups** (PBS : pve02 + copie hors site). Après un
-   crash total, le PBS du rack est perdu : restaurer depuis le PBS distant
-   `pbs-offsite`, ce qui demande **la clé de chiffrement du sync job** et
-   l'accès au serveur (gestionnaire de mots de passe de l'équipe ; détails
-   dans `docs/existant-piscine.md`).
+Une fois le point zéro fait, dans l'ordre, depuis la racine du repo. Chaque
+étape a sa cible `*-check` (lecture seule) avant la cible qui écrit
+(`CONFIRM=yes`) : toujours lire l'aperçu d'abord.
 
 **Avant l'enchaînement**, vérifier automatiquement les étapes 1 à 7 (lecture
 seule, ne modifie rien) :
 ```bash
-cd ansible && ansible-playbook preflight.yml
+make preflight
 ```
 Toutes les vérifications tournent même si l'une échoue ; le dernier play donne
 le verdict (`Point zero ready` ou la liste des problèmes par hôte). Les
 avertissements (Docker, npx, ISO préparés, droits du fichier de mot de passe
 du vault) ne bloquent pas.
+
+### 8.1 Réseau
+
+```bash
+make network-check
+make network-apply CONFIRM=yes
+```
+
+### 8.2 Stockage (NAS)
+
+Manuel tant que la couche `05-storage` n'existe pas : LUN iSCSI, cible,
+masking par IQN, CHAP (étape 4). Le secret CHAP est dans
+`group_vars/pve/vault.yml`.
+
+### 8.3 Proxmox sur les deux nœuds
+
+Un nœud à la fois, groupe prévenu. Sur un rack encore en service, **vider le
+nœud d'abord** (les guests sur son `local-lvm` sont effacés avec lui, ex. la
+VM `pbs` sur pve02 ; l'installation s'arrête s'il en reste).
+```bash
+make bootstrap                        # probe iLO + RAID
+make iso && make serve-iso            # serve-iso dans un second terminal
+make install HOST=pve01 CONFIRM=yes
+make install HOST=pve02 CONFIRM=yes
+```
+
+### 8.4 Cluster et qdevice (manuel)
+
+Pas automatisé exprès : un join raté casse le cluster.
+```bash
+# pve01 : création
+pvecm create INFRA-CLUSTER --link0 10.1.240.11
+# pve02 : join
+pvecm add 10.1.240.11 --link0 10.1.240.12
+# un des nœuds, qdevice rebranché (Raspberry Pi qdevice03)
+pvecm qdevice setup 10.1.240.13
+pvecm status                          # Quorate: Yes, 3 votes
+```
+Pour un seul nœud réinstallé dans un cluster vivant : procédure de re-join
+dans `ansible/roles/pve_config/tasks/cluster.yml` (section 9).
+
+### 8.5 Configuration des nœuds (`pve_config`)
+
+```bash
+make pve-config-check
+make pve-config CONFIRM=yes
+```
+Dépôts, `/etc/hosts`, NTP, IQN iSCSI enregistré (masking du NAS), CHAP,
+multipath, options du datacenter, stockages, job de backup de 02:00, comptes
+API. Points d'attention :
+
+- `pbs-store1` pointe sur la VM PBS, pas encore revenue : sa création peut
+  échouer à ce stade. Relancer `make pve-config` après l'étape 8.6.
+- le stockage `pbs-offsite` est créé avec la clé de chiffrement du vault :
+  c'est lui qui permet la restauration de l'étape 8.7.
+- le jeton `terraform@pve!iac` est recréé avec un **nouveau secret**, écrit
+  dans `20-proxmox/terraform.tfvars` : le recopier dans
+  `group_vars/pve/vault.yml` (`vault_pve_terraform_token`, le secret seul)
+  et dans Vaultwarden. Même chose pour les jetons `monitoring@pve!exporter`
+  et `packer@pve!pieric` (secrets dans `build/pve-tokens/`).
+
+### 8.6 PBS du rack (VM 2400, `pbs_config`)
+
+La VM PBS ne se sauvegarde pas elle-même (exclue du job de 02:00) : on la
+**recrée vide**, on y installe PBS, et `pbs_config` lui rend sa config.
+
+1. VM vide depuis le code (16 Gio système + 40 Gio datastore, `local-lvm` de
+   pve02, même MAC) :
+   ```bash
+   make vms-tfvars && make vms-init
+   make vms-plan       # doit montrer : pbs à créer (et rien d'autre de détruit)
+   ```
+   Appliquer seulement la VM PBS (Terraform dans Docker, comme le Makefile) :
+   `terraform apply -target=proxmox_virtual_environment_vm.pbs`.
+2. Monter l'ISO PBS 4.x (stockage `synology-iso`), installer sur le disque de
+   16 Gio : IP `10.1.240.30/24`, passerelle `10.1.240.1`, nom
+   `pbs.cloud-1.fun`. Clé `key/ansible.pub` pour l'utilisateur `ansible`
+   (sudo), comme les autres VMs.
+3. Disque de données : `sdb` en ext4, monté sur `/mnt/datastore/store1`
+   (fstab). `pbs_config` refuse de créer le datastore sur le disque système.
+4. ```bash
+   make pbs-config-check
+   make pbs-config CONFIRM=yes
+   make pve-config CONFIRM=yes       # crée pbs-store1 s'il manquait
+   ```
+   `token.shadow` est restauré depuis le vault : le cluster garde le même
+   secret pour `pbs-store1`. La synchro `offsite-push` (05:30) reprend avec
+   la même clé.
+
+### 8.7 Restauration des guests (depuis le PBS distant)
+
+Le datastore local repart vide : restaurer depuis **`pbs-offsite`** (stockage
+du cluster, clé de chiffrement dans le vault et dans Vaultwarden). Garder les
+**mêmes VMID** et le stockage `synology-lvm` (pbs : `local-lvm`, mais il n'est
+pas sauvegardé). Ordre : dhcp-dns (2401, DNS de tout le reste), vault-01
+(2402), rproxy-int01 (2403), puis le reste.
+```bash
+# sur un nœud, pour chaque guest (dernier backup : pvesm list pbs-offsite)
+qmrestore pbs-offsite:backup/vm/2401/<date> 2401 --storage synology-lvm
+pct restore 2402 pbs-offsite:backup/ct/2402/<date> --storage synology-lvm
+```
+Les templates (8001-8005) sont dans les backups aussi ; sinon les
+reconstruire : `make templates CONFIRM=yes` (`15-templates/README.md`).
+
+### 8.8 Guests et HA (Terraform, état dans HCP)
+
+Les VMs restaurées sont identiques à celles décrites dans `20-proxmox` ; la
+HA (ressources et règles) n'est pas dans les backups.
+```bash
+make vms-plan      # attendu : rien à changer sur les guests, HA à créer
+make vms-apply CONFIRM=yes
+```
+**Ne jamais appliquer un plan qui crée une VM restaurable** : sans bloc
+`clone`, Terraform créerait une VM vide (seule exception voulue : la VM pbs,
+étape 8.6). Restaurer d'abord, puis replanifier.
+
+### 8.9 Configuration des VMs
+
+```bash
+make config-check
+make config CONFIRM=yes
+```
+
+---
+
+## 9. Pannes partielles
+
+### Un nœud perdu (l'autre tourne)
+
+La HA redémarre ses guests sur le nœud restant (règles `node-affinity` non
+strictes). Le cluster garde le quorum grâce au qdevice (2 votes sur 3).
+
+1. Réparer le matériel (RAID : étape 6, puis `make iso`).
+2. Côté nœud survivant : `pvecm delnode <nœud>`, `rm -rf /etc/pve/nodes/<nœud>`.
+3. `make install HOST=<nœud> CONFIRM=yes`.
+4. Sur le nœud réinstallé : `pvecm add <IP survivant> --link0 <sa propre IP MGMT>`.
+5. `make pve-config CONFIRM=yes` : il retrouve son IQN iSCSI (le masking du
+   NAS refuse tout autre), le CHAP et le multipath ; les guests reviennent
+   sur leur nœud habituel (règles `home-pve01` / `home-pve02`).
+6. Si c'était **pve02** : la VM pbs (disque local) est perdue → étape 8.6.
+7. `make vms-plan` : aucun changement attendu.
+
+### Le PBS seul perdu
+
+Étape 8.6 uniquement, rien à restaurer : les guests tournent. Le datastore
+repart vide et se remplit au backup suivant (02:00) ; l'historique reste sur
+le PBS distant.
+
+### Le poste de contrôle perdu
+
+Étape 1 : cloner le repo, mot de passe du vault et clé SSH depuis Bitwarden,
+login HCP. Tout l'état utile est dans le repo (vaults) et dans HCP (état
+Terraform), rien à reconstruire.
