@@ -58,4 +58,10 @@ resource "proxmox_virtual_environment_container" "vault_01" {
     template_file_id = ""
     type             = "alpine"
   }
+
+  # HA guest: the HA and its rules (ha.tf) decide the node it runs on. A move
+  # (failover, maintenance) must not make Terraform replace it.
+  lifecycle {
+    ignore_changes = [node_name]
+  }
 }

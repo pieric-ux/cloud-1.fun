@@ -363,6 +363,10 @@ HA (ressources et règles) n'est pas dans les backups.
 make vms-plan      # attendu : rien à changer sur les guests, HA à créer
 make vms-apply CONFIRM=yes
 ```
+Le placement des guests en HA appartient à la HA (`node_name` ignoré par
+Terraform) : une VM restaurée sur un autre nœud ne déclenche pas de
+remplacement. Pour un guest hors HA, un nœud différent ferait proposer un
+remplacement : restaurer sur le nœud du code.
 **Ne jamais appliquer un plan qui crée une VM restaurable** : sans bloc
 `clone`, Terraform créerait une VM vide (seule exception voulue : la VM pbs,
 étape 8.6). Restaurer d'abord, puis replanifier.

@@ -22,11 +22,11 @@ Source : `infra03/docs/module03/cluster_setup.md`, `proxmox_setup.md`.
 ressources (`max_restart 3`, `max_relocate 2`, dhcp-dns `5` / `3`) :
 `vm:2401` dhcp-dns, `ct:2402` vault-01, `ct:2403` rproxy-int01, `vm:2405`
 Ansible, `vm:2406` prometheus01, `vm:2407` grafana01, `vm:2481` c2-hak5,
-`vm:1000-1002` k3s. Règles : `node-affinity home-pve01` (2403, 1000-1002,
-2401, 2406), `home-pve02` (2402, 2407), `resource-affinity` positives
-`prometheus-with-dns` (2401 + 2406) et `ha-rule-ea0d3cd4-3518` (les trois
-k3s ensemble). Pas de règle négative. Hors HA : pbs (disque local), sliver-c2,
-captive-portal.
+`vm:1000-1002` k3s. Règles : `node-affinity home-pve01` (2403, 1000, 1001,
+2401, 2406), `home-pve02` (2402, 2407, 1002), `resource-affinity` positive
+`prometheus-with-dns` (2401 + 2406), négative `k3s-workers-apart` (1001 et
+1002 jamais sur le même nœud, depuis le 2026-11-04 ; avant : les trois k3s
+forcés ensemble). Hors HA : pbs (disque local), sliver-c2, captive-portal.
 
 **Modèle CPU** des VMs migrables : `Haswell-noTSX-IBRS,flags=+pcid;+md-clear;+ssbd`
 (nœud le plus ancien ; `host` fait planter la migration pve02 → pve01).

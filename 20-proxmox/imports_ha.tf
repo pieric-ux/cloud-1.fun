@@ -52,7 +52,3 @@ import {
   to = proxmox_harule.prometheus_with_dns
   id = "prometheus-with-dns"
 }
-import {
-  to = proxmox_harule.k3s_together
-  id = "ha-rule-ea0d3cd4-3518"
-}

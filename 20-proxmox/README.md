@@ -21,6 +21,14 @@ Import method, for a guest added by hand:
 4. `terraform plan -out=tfplan` then `terraform apply tfplan`: recorded in the
    state, nothing changes on Proxmox.
 
+**Placement belongs to the HA**: the 10 HA guests ignore `node_name`
+(`lifecycle { ignore_changes = [node_name] }`), the rules of `ha.tf` decide
+where they run. Without it, a failover or a migration would make the next
+plan **replace** the moved guest (for the provider, a new node means a new
+VM). Their `node_name` in the code is the node they were imported on, only
+used if Terraform ever creates them. Guests outside the HA (pbs, sliver-c2,
+captive-portal) keep a strict `node_name`.
+
 Every VM sets its CPU explicitly (`Haswell-noTSX-IBRS` + flags): on a clone,
 the provider would otherwise apply its own default (`qemu64`) instead of the
 template's model. Containers: the import leaves the provider-side

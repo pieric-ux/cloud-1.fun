@@ -58,4 +58,10 @@ resource "proxmox_virtual_environment_vm" "grafana01" {
   operating_system {
     type = "l26"
   }
+
+  # HA guest: the HA and its rules (ha.tf) decide the node it runs on. A move
+  # (failover, maintenance) must not make Terraform replace it.
+  lifecycle {
+    ignore_changes = [node_name]
+  }
 }
