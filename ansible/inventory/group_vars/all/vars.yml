@@ -6,6 +6,9 @@ users_admins:
       - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAcryWfcg3iOT01QaDtVWOj96eOJY1kgOLr6GV3lEDlE id@MacBook-Pro-de-Id.local
   - name: alexis
     ssh_keys:
+      # New key of Alexis, shared by his two computers (2026-11-04).
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPON3Pxumz3ilR18bhzQaUUa5DUcOSdX5O/oLP0BtIzk alexis@ansible
+      # Previous key: to remove once Alexis confirms he no longer uses it.
       - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGRd6FEz1k6gqNMHGPX1j4jOD3KFDkTnl+6gc6YDy+P8 kino@Spellbook.local
   - name: benedict
     ssh_keys:
