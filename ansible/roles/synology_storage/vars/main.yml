@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: MIT-0
+---
+# Derived values (lazy: evaluated once the reads exist).
+storage_sid: "{{ (storage_login.content | from_json).data.sid }}"
+# Live data per read (luns, targets, shares, nfs), and NFS rules per share.
+storage_live: >-
+  {{ dict(storage_reads.results | map(attribute='item.name')
+     | zip(storage_reads.results | map(attribute='content') | map('from_json') | map(attribute='data'))) }}
+storage_nfs_live: >-
+  {{ dict(storage_nfs_reads.results | map(attribute='item.name')
+     | zip(storage_nfs_reads.results | map(attribute='content') | map('from_json')
+           | map(attribute='data') | map(attribute='rule', default=[]))) }}

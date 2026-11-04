@@ -1,0 +1,14 @@
+---
+# Layer 05 - storage on the Synology NAS (role synology_storage).
+#   default   read-only audit through the DSM web API: LUN, iSCSI target
+#             (CHAP, masking by the IQNs of host_vars/pveXX.yml), NFS shares;
+#             fails on any drift. Creation is not automated yet (runbook 8.2).
+
+- name: Audit the NAS storage
+  hosts: storage
+  gather_facts: false
+
+  tasks:
+    - name: Storage audit
+      ansible.builtin.import_role:
+        name: synology_storage

@@ -133,7 +133,8 @@ Si le backup est plus ancien que le code, l'apply rattrape l'écart.
 
 ## 4. Synology — DSM
 
-**Pourquoi manuel** : pas d'API avant l'installation de DSM.
+**Pourquoi manuel** : pas d'API avant l'installation de DSM (ensuite :
+audit par `make storage-check`, étape 8.2).
 
 1. Installer DSM avec Synology Assistant, créer le premier compte admin.
 2. Réseau : LAN1 `10.1.20.21`, LAN2 `10.1.20.22` (VLAN 20 STORAGE).
@@ -247,9 +248,21 @@ make network-apply CONFIRM=yes
 
 ### 8.2 Stockage (NAS)
 
-Manuel tant que la couche `05-storage` n'existe pas : LUN iSCSI, cible,
-masking par IQN, CHAP (étape 4). Le secret CHAP est dans
-`group_vars/pve/vault.yml`.
+Création encore manuelle dans DSM (étape 4), avec les valeurs du code
+(`group_vars/storage/vars.yml`) : LUN `lun-prox` 1000 Gio thin sur
+`/volume1`, cible `iqn.2026-10.lab.infra:prox` en CHAP unidirectionnel
+(utilisateur et secret : `group_vars/pve`), masking = les deux IQN des
+`host_vars/pveXX.yml` en lecture-écriture et tout autre initiateur refusé,
+partage `iso` en NFS `10.1.20.0/24` rw, root squash vers admin. Puis :
+```bash
+make storage-check     # audit lecture seule, doit finir sur "NAS matches the code"
+```
+Une LUN recréée a un **nouvel uuid et un nouveau WWID** : reporter l'uuid
+(DSM > SAN Manager, ou `make storage-check` qui le signale en écart) dans
+`storage_luns`, et le WWID
+lu sur un nœud (`multipath -ll` ou `/lib/udev/scsi_id -g -d /dev/sdb`) dans
+`pve_iscsi_lun_wwid` : il ne se déduit pas de l'uuid. Sinon multipath et
+`synology-lvm` ne retrouvent pas la LUN.
 
 ### 8.3 Proxmox sur les deux nœuds
 

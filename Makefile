@@ -29,7 +29,7 @@ endef
 .PHONY: help preflight lint \
 	network network-check network-apply pfsense-backup \
 	bootstrap iso media-test serve-iso install pve-config-check pve-config pbs-config-check pbs-config \
-	templates-check templates \
+	storage-check templates-check templates \
 	vms-tfvars vms-init vms-plan vms-apply \
 	config-check config
 
@@ -99,6 +99,11 @@ pbs-config-check: ## Preview the Proxmox Backup Server configuration (no change)
 pbs-config: ## Apply the Proxmox Backup Server configuration (CONFIRM=yes)
 	$(call need_confirm,the Proxmox Backup Server)
 	$(PLAYBOOK) 10-bootstrap.yml --tags pbs-config -e pbs_config_confirm=true
+
+# --- 05 storage: Synology NAS (DSM web API) --------------------------------
+
+storage-check: ## Audit the NAS (LUN, iSCSI target, masking, CHAP, NFS) against the code (read-only)
+	$(PLAYBOOK) 05-storage.yml
 
 # --- 15 templates: Packer (local install: serves the answer files over HTTP
 # to the VM, on the address of this machine seen from VLAN 240) -------------

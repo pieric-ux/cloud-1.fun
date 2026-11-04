@@ -1,0 +1,9 @@
+# Storage (layer 05). Like the network devices, the NAS carries a VLAN
+# (STORAGE, 10.1.20.0/24) instead of living in a zone: ansible_host is here.
+---
+all:
+  children:
+    storage:
+      hosts:
+        nas:
+          ansible_host: 10.1.20.21

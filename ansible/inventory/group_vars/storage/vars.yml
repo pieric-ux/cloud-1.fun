@@ -1,0 +1,40 @@
+---
+# Synology RS812RP+, DSM 6.2.4: configured through the DSM web API (the one
+# the web UI uses), from the controller. No SSH, no Python on the NAS.
+ansible_connection: local
+ansible_python_interpreter: "{{ ansible_playbook_python }}"
+ansible_become: false
+
+dsm_url: "https://{{ ansible_host }}:5001"
+# Self-signed certificate of DSM.
+dsm_validate_certs: false
+dsm_user: admin
+dsm_password: "{{ vault_dsm_admin_password }}"
+
+# Expected storage, audited by the synology_storage role (05-storage.yml).
+# iSCSI values come from the Proxmox side (group pve, host_vars/pveXX.yml):
+# one source for both ends of the link.
+storage_pve: "{{ groups['pve'] | map('extract', hostvars) | list }}"
+
+storage_luns:
+  - name: lun-prox
+    location: /volume1
+    size_gib: 1000
+    # Seen by multipath on the nodes as pve_iscsi_lun_wwid (WWID read on a
+    # node, not derived from this uuid).
+    uuid: 1fae838b-edf5-4c82-85da-dbf55765b643
+
+storage_iscsi_targets:
+  - name: prox
+    iqn: iqn.2026-10.lab.infra:prox
+    luns: [lun-prox]
+    chap_user: "{{ storage_pve[0].pve_iscsi_chap_user }}"
+    chap_password: "{{ storage_pve[0].pve_iscsi_chap_password }}"
+    # Masking: only the recorded initiators of the nodes, everything else denied.
+    initiators: "{{ storage_pve | map(attribute='pve_iscsi_initiator_name') | list }}"
+
+storage_nfs_shares:
+  - name: iso
+    volume: /volume1
+    rules:
+      - {client: 10.1.20.0/24, privilege: rw, root_squash: admin}
