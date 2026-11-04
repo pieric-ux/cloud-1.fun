@@ -20,6 +20,10 @@ ios_resources:
     shutdown: disabled
     state: active
     vlan_id: 10
+  - name: SCHOOL-VLAN13
+    shutdown: disabled
+    state: active
+    vlan_id: 13
   - name: STOR
     shutdown: disabled
     state: active
@@ -163,8 +167,8 @@ ios_resources:
   - description: BLACKHOLE
     enabled: false
     name: FastEthernet0/46
-  - description: BLACKHOLE
-    enabled: false
+  - description: LINK-RACK13
+    enabled: true
     name: FastEthernet0/47
   - description: UPLINK PFSENSE - HOST_PFSENSE
     enabled: true
@@ -205,6 +209,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -215,6 +220,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -225,6 +231,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -235,6 +242,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -245,6 +253,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -255,6 +264,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -265,6 +275,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -275,6 +286,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -285,6 +297,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -295,6 +308,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -305,6 +319,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -315,6 +330,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -457,7 +473,7 @@ ios_resources:
     mode: access
     name: FastEthernet0/46
   - access:
-      vlan: 999
+      vlan: 13
     mode: access
     name: FastEthernet0/47
   - access:
@@ -481,6 +497,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -509,6 +526,14 @@ ios_resources:
     ipv4:
     - address: 10.1.10.1/24
     name: Vlan10
+    redirects: true
+    unreachables: true
+    ipv6_redirects: true
+    ipv6_unreachables: true
+  - autostate: true
+    ipv4:
+    - address: 10.13.250.72/16
+    name: Vlan13
     redirects: true
     unreachables: true
     ipv6_redirects: true

@@ -115,7 +115,7 @@ pve_users:
   - id: packer@pve
     comment: Packer build user
   - id: terraform@pve
-    comment: Terraform, layer 20
+    comment: Terraform
 
 # API tokens, privilege-separated by default (rights from their own ACL);
 # `privsep: 0` inherits the rights of the user. A token created here gets a
@@ -127,7 +127,7 @@ pve_tokens:
   - id: packer@pve!pieric
     privsep: 0
   - id: terraform@pve!iac
-    comment: Terraform, layer 20
+    comment: Terraform
     secret_file: "{{ playbook_dir }}/../20-proxmox/terraform.tfvars"
 
 pve_acls:

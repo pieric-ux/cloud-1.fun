@@ -25,6 +25,11 @@ ios_resources:
     state: active
     vlan_id: 10
   - mtu: 1500
+    name: SCHOOL-VLAN13
+    shutdown: disabled
+    state: active
+    vlan_id: 13
+  - mtu: 1500
     name: STOR
     shutdown: disabled
     state: active
@@ -146,8 +151,8 @@ ios_resources:
   - description: MGMT
     enabled: true
     name: GigabitEthernet1/0/38
-  - description: MGMT
-    enabled: false
+  - description: MR600-CAPTIVE
+    enabled: true
     name: GigabitEthernet1/0/39
   - description: MGMT
     enabled: false
@@ -208,6 +213,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -217,6 +223,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -226,6 +233,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -235,6 +243,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -244,6 +253,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -253,6 +263,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -262,6 +273,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -271,6 +283,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -280,6 +293,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -289,6 +303,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -298,6 +313,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -307,6 +323,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -325,6 +342,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -343,6 +361,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -361,6 +380,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -379,6 +399,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -522,6 +543,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
@@ -540,6 +562,7 @@ ios_resources:
     trunk:
       allowed_vlans:
       - '10'
+      - '13'
       - '20'
       - '30'
       - '240'
