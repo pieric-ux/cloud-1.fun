@@ -28,7 +28,7 @@ resource "proxmox_virtual_environment_vm" "ansible" {
     file_format  = "raw"
     interface    = "scsi0"
     replicate    = false
-    size         = 10
+    size         = 30
   }
   memory {
     dedicated = 2048
